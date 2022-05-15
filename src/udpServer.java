@@ -112,27 +112,28 @@ public class udpServer extends Thread {
                                                                                     // the packet -
       // - this includes the hashcode for corruption checking.
 
-      int y = received.lastIndexOf("@"); // Find the index of the '@' sign, this is used to delimit -
+      // int y = received.lastIndexOf("@"); // Find the index of the '@' sign, this is used to delimit -
       // - the actual message from the appended hashcode.
 
-      String msg = received.substring(0, y - 1); // Store the actual message sent with the packet.
-
-      int iHash = Integer.valueOf(received.substring(y + 1, received.length())); // Generate a new hashcode from the
+   //   String msg = received.substring(0, y - 1); // Store the actual message sent with the packet.
+      String msg = received;
+   //  int iHash = Integer.valueOf(received.substring(y + 1, received.length())); // Generate a new hashcode from the
                                                                                  // message sent with the package.
 
       System.out.println("Message from " + currentUser + "@" + packet.getAddress().getHostAddress() + ": " + msg);
       // Print the user's data and their message - this is printed on the server's
       // terminal.
 
-      if (transmitError)
-        msg = transmissionError(msg); // Call the transmissionError method.
+      // if (transmitError)
+      //   msg = transmissionError(msg); // Call the transmissionError method.
 
-      if (iHash == msg.hashCode()) { // i.e. no corruption in message
+      // if (iHash == msg.hashCode()) { // i.e. no corruption in message
         if (received.contains("connect-User@")) { // If the user is connecting for the first time and trying to add
                                                   // their username.
           int x = received.indexOf("@");
-          int z = received.lastIndexOf("@");
-          String username = received.substring(x + 1, z - 1);
+          // int z = received.lastIndexOf("@");
+        //  String username = received.substring(x + 1, z - 1);
+        String username = received.substring(x + 1, received.length());
           if (allowedUsers.contains(username)) {
             manageClientBase(username, address, port); // Call the manageClientBase method to create a new client object
                                                        // (if the user doesn't already exist)
@@ -176,19 +177,19 @@ public class udpServer extends Thread {
         printMessageToChatLog(msg); // Print the message to the chat history file
 
         broadCastMessage(msg, currentUser, terminating);
-      } else { // message corrupted i.e. the hashcode that was sent to the server along
-        // with the message does not match the hashcode that was generated at the
-        // server.
+      // } else { // message corrupted i.e. the hashcode that was sent to the server along
+      //   // with the message does not match the hashcode that was generated at the
+      //   // server.
 
-        msg = "@Corrupted, please resend message.@";
-        buf = msg.getBytes();
-        packet = new DatagramPacket(buf, buf.length, address, port);
-        try {
-          socket.send(packet); // Send message to client saying that the message was corrupted.
-        } catch (IOException e) {
-          System.out.println(e);
-        }
-      }
+      //   msg = "@Corrupted, please resend message.@";
+      //   buf = msg.getBytes();
+      //   packet = new DatagramPacket(buf, buf.length, address, port);
+      //   try {
+      //     socket.send(packet); // Send message to client saying that the message was corrupted.
+      //   } catch (IOException e) {
+      //     System.out.println(e);
+      //   }
+      // }
     }
     socket.close(); // Close the server socket.
   }
@@ -280,7 +281,7 @@ public class udpServer extends Thread {
    */
 
   private void sendMessage(String msg, InetAddress address, int port) {
-    msg = senderThread.buildMessageChecksum(msg);
+    //msg = senderThread.buildMessageChecksum(msg);
     buf = msg.getBytes();
     DatagramPacket packet = new DatagramPacket(buf, buf.length, address, port);
     try {

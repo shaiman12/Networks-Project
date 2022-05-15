@@ -71,7 +71,7 @@ public class senderThread implements Runnable {
    */
 
   public static void sendMessage(String msg) { //This is a simple sendmessage method to send to server.
-    msg = buildMessageChecksum(msg); //Add checksum to message
+  //  msg = buildMessageChecksum(msg); //Add checksum to message
     byte[] buf = msg.getBytes(); //buffer built from the message.
 
     DatagramPacket packet = new DatagramPacket( // Create a packet of The buffer, buffer length as well as the IP and port of the server.

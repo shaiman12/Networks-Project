@@ -22,8 +22,7 @@ public class udpDriver {
    *@param args Command line arg
    */
   public static void main(String[] args) {
-    Scanner input = new Scanner(System.in);
-    String uName;
+ 
     udpServer server;
 
     try {
