@@ -2,6 +2,8 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import org.bouncycastle.openpgp.PGPPublicKeyRing;
+import org.pgpainless.PGPainless;
 
 /**
  * receiverThread This class implements runnable. This class' primary function
@@ -43,7 +45,7 @@ class receiverThread implements Runnable {
   @Override
   public void run() { // receiver thread starts running. It acts independently of the send thread.
     while (true) {
-      byte[] buf = new byte[1024]; // Create buffer with size 1024 bytes.
+      byte[] buf = new byte[4096]; // Create buffer with size 1024 bytes.
 
       DatagramPacket dpRecv = new DatagramPacket(buf, buf.length); // Create new Datagram packet for receiving data.
 
@@ -60,6 +62,19 @@ class receiverThread implements Runnable {
       //int iHash = 0;                                            //changed 
       String msg = str;
       String errorMsg = "Message corrupted here at receiver side. Please resend Message.";
+
+
+      if (str.contains("KEYUPDATE@")){
+        //addd all public keys to public key data structure
+        try {
+          int x = str.indexOf("@");
+          senderThread.pubKeyStructure.add(PGPainless.readKeyRing().publicKeyRing(str.substring(x+1, str.length())));
+
+        } catch (Exception e) {
+          //TODO: handle exception
+        }
+        
+      }
 
       if (str.contains("connected@")) {
         senderThread.isConnected = true;

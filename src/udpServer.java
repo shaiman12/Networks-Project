@@ -7,6 +7,26 @@ import java.net.SocketException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
+import javax.sound.sampled.SourceDataLine;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+ import java.security.InvalidAlgorithmParameterException;
+ import java.security.NoSuchAlgorithmException;
+ import org.bouncycastle.openpgp.PGPException;
+ import org.bouncycastle.openpgp.PGPPublicKeyRing;
+ import org.bouncycastle.openpgp.PGPPublicKeyRingCollection;
+ import org.bouncycastle.util.io.Streams;
+ import org.pgpainless.PGPainless;
+ import org.pgpainless.algorithm.HashAlgorithm;
+ import org.pgpainless.algorithm.SymmetricKeyAlgorithm;
+ import org.pgpainless.encryption_signing.EncryptionOptions;
+ import org.pgpainless.encryption_signing.EncryptionStream;
+ import org.pgpainless.encryption_signing.ProducerOptions;
+ import org.pgpainless.encryption_signing.SigningOptions;
+ import org.pgpainless.key.generation.type.rsa.RsaLength;
+import org.pgpainless.key.info.KeyRingInfo;
 
 /**
  * udpServer is the server that udpClients communicate with and through. Since
@@ -33,6 +53,7 @@ public class udpServer extends Thread {
   private ArrayList<clientObj> clientArrayList;
   private ArrayList<String> allowedUsers;
   private Scanner fileIn;
+  private PGPPublicKeyRing publicKey;
 
   private FileWriter chatFileOut;
   private Date currentDate;
@@ -91,7 +112,7 @@ public class udpServer extends Thread {
 
     while (running) { // Loops until running is no longer true. This can happen if the server is
                       // forced or asked to be shutdown.
-      buf = new byte[1024]; // Create buffer with size 1024 bytes.
+      buf = new byte[4096]; // Create buffer with size 1024 bytes.
 
       DatagramPacket packet = new DatagramPacket(buf, buf.length);
 
@@ -126,8 +147,21 @@ public class udpServer extends Thread {
 
       // if (transmitError)
       //   msg = transmissionError(msg); // Call the transmissionError method.
+        if(received.contains("----BEGIN PGP PUBLIC KEY BLOCK----")){
+          try {
+            publicKey = PGPainless.readKeyRing().publicKeyRing(received);
 
-      // if (iHash == msg.hashCode()) { // i.e. no corruption in message
+            // KeyRingInfo ringInfo = new KeyRingInfo(publicKey);
+            // System.out.println(ringInfo.getPrimaryUserId());
+
+          } catch (Exception e) {
+            //TODO: handle exception
+          }
+          
+          continue;
+        }
+      // add public key development here
+
         if (received.contains("connect-User@")) { // If the user is connecting for the first time and trying to add
                                                   // their username.
           int x = received.indexOf("@");
@@ -135,8 +169,17 @@ public class udpServer extends Thread {
         //  String username = received.substring(x + 1, z - 1);
         String username = received.substring(x + 1, received.length());
           if (allowedUsers.contains(username)) {
+           
+            
+            for (int i = 0; i < clientArrayList.size(); i++) {
+              msg = "KEYUPDATE@";
+              msg += convertClientPubKeyToString(clientArrayList.get(i).getClientPubKey());
+              sendMessage(msg, address, port);
+              
+            }
             manageClientBase(username, address, port); // Call the manageClientBase method to create a new client object
-                                                       // (if the user doesn't already exist)
+              
+
             msg = "Current users in chat: ";
             for (int i = 0; i < clientArrayList.size(); i++)
               msg += clientArrayList.get(i).getUsername() + " ";
@@ -144,6 +187,9 @@ public class udpServer extends Thread {
             sendMessage("connected@" + username, address, port);
             sendMessage(msg, address, port);
             broadCastMessage("(" + username + ") has entered the chat.", username, false);
+
+            
+            // (if the user doesn't already exist)
           } else {
             sendMessage("You are not on the server whitelist. Please re-enter a valid username:", address, port);
           }
@@ -214,7 +260,7 @@ public class udpServer extends Thread {
     }
 
     if (!(clientPresent))
-      clientArrayList.add(new clientObj(username, address, port)); // If the client does not yet exist, create a new
+      clientArrayList.add(new clientObj(username, address, port, publicKey)); // If the client does not yet exist, create a new
                                                                    // clientObj and add it to the list.
   }
 
@@ -348,6 +394,16 @@ public class udpServer extends Thread {
    * @param msg The message to be corrupted
    * @returnn The corrupted message
    */
+
+  private String convertClientPubKeyToString(PGPPublicKeyRing pk){
+    String asciiArmoredPublicKey= "";
+    try {
+      asciiArmoredPublicKey = PGPainless.asciiArmor(pk);
+    } catch (Exception e) {
+      //TODO: handle exception
+    }
+     return asciiArmoredPublicKey;
+  }
 
   private String transmissionError(String msg) { // Append 'error' to message. This will cause the subsequent
     // check on equality between hashcodes to fail

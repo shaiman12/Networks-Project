@@ -55,3 +55,57 @@
 (12-05-2022 20:19:19) @shutdown@ by user: admin
 (12-05-2022 20:20:08) [admin] has disconnected.
 (14-05-2022 21:44:42) @shutdown@ by user: FSHJAR002
+(15-05-2022 17:59:28) [admin] -----BEGIN PGP PUBLIC KEY BLOCK-----
+Version: PGPainless
+Comment: A5AC 2C08 62E5 03C3 EFA6  0B03 6210 EBC6 530F 4ED4
+Comment: admin
+
+mQINBGKBI2ABEAChl9cIdM/t0uSk0k9Mx33xq2VHiLFDj3lay8Q8ata1rp4spxiq
+A7HiQnMItKmk7vdVrrZLJvp8gKzRONY90xZ86vJnup1q3flH9ZKnPxTyNhB+9BNZ
+nd/fBv3Mn0H2yBg2R0t7vbDn3zlGdeNJV6YN8ROT/NjWErhKrAc5Ydqdn/X65C1l
+MLyBji1wgbSjmbMfIWJkBLloCmS95AtFTq6k9MZKWiMD5B1pyT+Se/6rin0AVGIS
+VnGSbGZTTg1UOhuDY4ZYIADo20sVjJp8lAkIln7uH80S3a4hzRHAeadc1pK/nPE3
+h/+Xac4ezlEyWPcxJuPvz7gsKHA7RXPwgHbBNaIUtFhLjV7ys1YLAyQgozKSzw5U
+b1GjeJ+2VwHxB7V5vzifcL19ZuEUISo7A5OSYcdwJwdrvHQZp4p5hOiioykR8NnA
+1Uvb2QiZKn4b4gt7lZSqcTxlo6KqgTOICb0N4hObiE2Awi/D4Y/l568vnmli789m
+zhPmSCdVResRYyTOQZ8DM+jjGd0sFJIPCXjaBQ2AaNumAFbz+MpLfk/a5nxHfFcp
+DlT+O530bhjb28LialB0qrtgQ7Gj/DPhg+3Bx6fd40ExqtfjOMUhBDAiwpeGzDso
+dN2r1MnZ2QPL8jTKuHFescTUl/63bKcYWGdhGBU9tornTHl97evGSRtIPwARAQAB
+tAVhZG1pbokCTQQTAQoAQQUCYoEjYAkQYhDrxlMPTtQWIQSlrCwIYuUDw++mCwNi
+EOvGUw9O1AKeAQKbBwUWAgMBAAQLCQgHBRUKCQgLApkBAADxXg/5AXn3FTM3viEL
+3j92AfmNWmI5Ul1YfoDeU4DfYHAuPufem6vEf9T4QC05DmIVx5NTiTs+voCg6SLO
+qFpDD8XNFz10y2ZXzHgXxb2mpMLZE8Udw2t/whr5fqeXe7nvuAbowoJQxZJRl0rY
+IdphlWs8yR2CUQuAhmSw+h7AMf8e4lgyxAI6E189Ohbv2Wb+69yxHyD0YoTs2wsM
+6We8O1Ksa7EyrlqLX1yjJgxcWMeNf+rcAWmHX/XU/2We6KEQ209CdzUVI1M7VJ7T
+MrkrDQeux6o3/BtBxcCQZezi6ypA29v7yLyHd9IYRtcmQV5GzmRabkQjyl7/3GRA
+tQhjReRb1wQm4+pcWtd96xs9IwFRAu19U9lytFRo7ysx22wzX07IdCFBSczhvZJA
+OuYuTMbYQg0/+re3aO7eJNiWtCTSs4MHKdtaawOXxtbGUpPGQsJ6c9PV19sV6FUq
+PDdhCeIAGDu6LNKijng/zucHmhqCW5ueOQj2arSmxX007nCl1gkh5hU2cachn/bC
+SScNJZtFAbom6ZU3sgC8VFQ05092HQ1r24ObgGzCaAn2k4WNgmME08II2iASVU/L
+5SuacQklYiaxnaDMfQ9/ynSrvaqvwX0S+An8xzbHm2flG8s6hcGisM/axblZxtOz
+F6YMmiplCYgTmGpFdp6QKlpnuOvQeLc=
+=UU36
+-----END PGP PUBLIC KEY BLOCK-----
+(15-05-2022 17:59:29) [admin] hi
+(15-05-2022 18:07:08) @shutdown@ by user: admin
+(15-05-2022 18:08:06) [admin] hi
+(15-05-2022 18:14:34) @shutdown@ by user: admin
+(15-05-2022 18:37:14) @shutdown@ by user: admin
+(15-05-2022 19:46:22) [admin] hi
+(15-05-2022 19:46:25) [admin] hello
+(15-05-2022 19:49:40) [admin] hi
+(15-05-2022 19:49:48) @shutdown@ by user: admin
+(15-05-2022 19:52:08) [admin] has disconnected.
+(15-05-2022 19:53:43) [admin] hi
+(15-05-2022 19:53:57) [admin] has disconnected.
+(15-05-2022 19:54:18) [admin] hi
+(15-05-2022 19:54:25) [admin] hello
+(15-05-2022 19:58:56) [admin] hi
+(15-05-2022 19:59:18) [FSHJAR002] hi
+(15-05-2022 19:59:49) [admin] hello
+(15-05-2022 20:00:06) [FSHJAR002] hi
+(15-05-2022 20:00:13) [FSHJAR002] j
+(15-05-2022 20:00:15) [FSHJAR002] l
+(15-05-2022 20:00:15) [FSHJAR002] k
+(15-05-2022 20:00:16) [FSHJAR002] \kj
+(15-05-2022 20:00:44) @shutdown@ by user: FSHJAR002

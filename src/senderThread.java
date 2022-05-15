@@ -3,7 +3,26 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.Scanner;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+ import java.security.InvalidAlgorithmParameterException;
+ import java.security.NoSuchAlgorithmException;
+ import org.bouncycastle.openpgp.PGPException;
+ import org.bouncycastle.openpgp.PGPPublicKeyRing;
+ import org.bouncycastle.openpgp.PGPSecretKeyRing;
+ import org.bouncycastle.util.io.Streams;
+ import org.pgpainless.PGPainless;
+ import org.pgpainless.algorithm.HashAlgorithm;
+ import org.pgpainless.algorithm.SymmetricKeyAlgorithm;
+ import org.pgpainless.encryption_signing.EncryptionOptions;
+ import org.pgpainless.encryption_signing.EncryptionStream;
+ import org.pgpainless.encryption_signing.ProducerOptions;
+ import org.pgpainless.encryption_signing.SigningOptions;
+ import org.pgpainless.key.generation.type.rsa.RsaLength;
+ import org.pgpainless.key.info.KeyRingInfo;
 
+ import java.util.*;
 /**
  *senderThread
  *This class implements runnable.
@@ -24,6 +43,7 @@ public class senderThread implements Runnable {
   private static InetAddress serverAddress;
   private static int port;
   public static boolean isConnected;
+  public static ArrayList<PGPPublicKeyRing> pubKeyStructure;
 
   /**
    * This is the constructor for the senderThread
@@ -37,6 +57,7 @@ public class senderThread implements Runnable {
     serverAddress = sAddress;
     port = p;
     isConnected = false;  //isConnected is set to false until the server has confirmed the user can connect.
+    pubKeyStructure = new ArrayList<PGPPublicKeyRing>();
   }
 
   /**
@@ -46,17 +67,44 @@ public class senderThread implements Runnable {
    */
   @Override
   public void run() {
-    Scanner input = new Scanner(System.in); //Create a new Scanner for taking in user input.
-
+    String uname = "";
+     Scanner input = new Scanner(System.in); // Create a new Scanner for taking in user input.
+     PGPSecretKeyRing secretKey = null;
+     PGPPublicKeyRing publicKeys = null;
+     
     while (true) {
       String msg = (input.nextLine()).trim();
       //Get the message to be sent from user input.
 
       if (isConnected) {  //If the user has been allowed into the server.
-        sendMessage(msg); //Send the message
+       System.out.println("printing keys");
+        for (PGPPublicKeyRing pgpPublicKey : pubKeyStructure) {
+          KeyRingInfo ringInfo = new KeyRingInfo(pgpPublicKey);
+          System.out.println(ringInfo.getPrimaryUserId());
+          
+        }
+        sendMessage(msg);
+        System.out.println("DONE sprinting keys");
        // new Thread(new realiableThread(dSock)).start();
       } else {            //Try connect the user to the server
+        uname = msg;
+        
+
+        try {
+
+          secretKey = PGPainless.generateKeyRing().simpleRsaKeyRing(uname, RsaLength._4096);    //secret key
+          publicKeys = PGPainless.extractCertificate(secretKey);                                //public key 
+          sendPublicKey(publicKeys);
+          // System.out.println(secretKey.getPublicKey().getClass());
+          // System.out.println(secretKey.getSecretKey().getClass());
+        } catch (InvalidAlgorithmParameterException | NoSuchAlgorithmException | PGPException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
         sendMessage("connect-User@" + msg);
+       // System.out.println("Username is: " + msg);
+        
+
       }
       if (msg.contains("@exit@")) System.exit(0); //If the user requests to shut their client down then the application is closed.
     }
@@ -70,8 +118,8 @@ public class senderThread implements Runnable {
    * @param msg The message to be sent.
    */
 
-  public static void sendMessage(String msg) { //This is a simple sendmessage method to send to server.
-  //  msg = buildMessageChecksum(msg); //Add checksum to message
+  public static void sendMessage(String msg) { // This is a simple sendmessage method to send to server.
+   // msg = buildMessageChecksum(msg);  //Add checksum to message
     byte[] buf = msg.getBytes(); //buffer built from the message.
 
     DatagramPacket packet = new DatagramPacket( // Create a packet of The buffer, buffer length as well as the IP and port of the server.
@@ -86,6 +134,21 @@ public class senderThread implements Runnable {
     } catch (IOException e) {
       System.out.println(e);
     }
+  }
+
+  public static void sendPublicKey(PGPPublicKeyRing keys){
+
+    try {
+      String asciiArmoredPublicKey = PGPainless.asciiArmor(keys);
+
+      sendMessage(asciiArmoredPublicKey);
+    } catch (IOException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+
+    
+
   }
 
   /**

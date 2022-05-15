@@ -1,4 +1,5 @@
 import java.net.InetAddress;
+import org.bouncycastle.openpgp.PGPPublicKeyRing;
 
 /**
  * This is a simple class used to create a light-weight data storage class for
@@ -21,6 +22,8 @@ public class clientObj { // Basic client object. Used exclusively by the udpServ
   private String userName;
   private InetAddress address;
   private int port;
+  private PGPPublicKeyRing publicKey = null;
+
 
   /**
    * Construction of this object requires a username, an IP address and a port
@@ -31,11 +34,12 @@ public class clientObj { // Basic client object. Used exclusively by the udpServ
    * @param p The port number of the client
    */
 
-  public clientObj(String u, InetAddress a, int p) { // Client is created with their particular username, IP address and
+  public clientObj(String u, InetAddress a, int p, PGPPublicKeyRing pk) { // Client is created with their particular username, IP address and
                                                      // port.
     userName = u;
     address = a;
     port = p;
+    publicKey = pk;
   }
 
   /**
@@ -45,6 +49,10 @@ public class clientObj { // Basic client object. Used exclusively by the udpServ
    */
   public String getUsername() {
     return userName;
+  }
+
+  public PGPPublicKeyRing getClientPubKey(){
+    return publicKey;
   }
 
   /**
