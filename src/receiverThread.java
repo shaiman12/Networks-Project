@@ -56,37 +56,38 @@ class receiverThread implements Runnable {
       String str = new String(dpRecv.getData(), 0, dpRecv.getLength()).trim(); // Get the message sent with the packet.
       // This currently includes the appended hashcode.
 
-      int y, iHash = 0;
-      String msg = "";
+      int y = 0;
+      //int iHash = 0;                                            //changed 
+      String msg = str;
       String errorMsg = "Message corrupted here at receiver side. Please resend Message.";
 
       if (str.contains("connected@")) {
         senderThread.isConnected = true;
         int x = str.indexOf("@");
-        int z = str.lastIndexOf("@");
-        String username = str.substring(x + 1, z - 1);
+        //int z = str.lastIndexOf("@");                             //changed
+        String username = str.substring(x + 1, str.length());       //changed
         printWelcomeInformation(username);
 
-      } else if (str.contains("@Corrupted, please resend message.@")) { // This would be the case if the message was
+      } //else if (str.contains("@Corrupted, please resend message.@")) { // This would be the case if the message was
                                                                         // corrupted between the original sender and the
                                                                         // server, or at the server itself.
-        System.out.println("Corrupted at server side. Please resend message.");
-      } else { // If the message arrived and was not corrupted between the original sender or
+        //System.out.println("Corrupted at server side. Please resend message.");
+       //else { // If the message arrived and was not corrupted between the original sender or
                // at the server.
-        y = str.lastIndexOf("@");
-        msg = str.substring(0, y - 1); // Find the actual message sent along with the packet.
-        iHash = Integer.valueOf(str.substring(y + 1, str.length())); // Extract the hashcode from the packet.
-      }
+        //y = str.lastIndexOf("@");
+        //msg = str.substring(0, y - 1); // Find the actual message sent along with the packet.
+        //iHash = Integer.valueOf(str.substring(y + 1, str.length())); // Extract the hashcode from the packet.   //commented out
+      //}
 
       if (str.contains("@shutdown@ by user:"))
-        System.out.println( // If any client shuts the server down, all clients are notified.
+        System.out.println(                             // If any client shuts the server down, all clients are notified.
             "Server has been shutdown, please exit client.");
-      else if (iHash == msg.hashCode())
-        System.out.println(msg); // If the hashcode that was sent along with the message
+      //else if (iHash == msg.hashCode())
+        //System.out.println(msg); // If the hashcode that was sent along with the message    //commented out
       // matches the hashcode calculated now, the message is printed.
 
       else
-        System.out.println(errorMsg); // Otherwise, the relevant error message is printed.
+        System.out.println(msg); // Otherwise, the relevant error message is printed.
     }
   }
 
