@@ -2,6 +2,27 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.Scanner;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+ import java.security.InvalidAlgorithmParameterException;
+ import java.security.NoSuchAlgorithmException;
+ import org.bouncycastle.openpgp.PGPException;
+ import org.bouncycastle.openpgp.PGPPublicKeyRing;
+ import org.bouncycastle.openpgp.PGPSecretKeyRing;
+ import org.pgpainless.key.protection.*;
+ import org.bouncycastle.util.io.Streams;
+ import org.pgpainless.PGPainless;
+ import org.pgpainless.algorithm.HashAlgorithm;
+ import org.pgpainless.algorithm.SymmetricKeyAlgorithm;
+ import org.pgpainless.encryption_signing.EncryptionOptions;
+ import org.pgpainless.encryption_signing.EncryptionStream;
+ import org.pgpainless.encryption_signing.ProducerOptions;
+ import org.pgpainless.encryption_signing.SigningOptions;
+ import org.pgpainless.key.generation.type.rsa.RsaLength;
+ import org.pgpainless.algorithm.DocumentSignatureType;
+ import org.pgpainless.key.info.KeyRingInfo;
 
 /**
 *udpClient
@@ -16,6 +37,10 @@ public class udpClient {
   private  DatagramSocket socket;
   private  InetAddress serverAddress;
   private  int port;
+
+  private static PGPSecretKeyRing secretKey = null;
+  private static SecretKeyRingProtector protectorKey = null;
+  private static PGPPublicKeyRing publicKey = null;
   
 
   
@@ -31,14 +56,22 @@ public class udpClient {
     try {
       this.port = port;
       serverAddress = InetAddress.getByName(destinationAddr);
+      Scanner input = new Scanner(System.in);
+      String uname = (input.nextLine()).trim();
+    //  input.close();
       
+
+      secretKey = PGPainless.generateKeyRing().simpleRsaKeyRing(uname, RsaLength._4096);    //secret key
+      protectorKey = SecretKeyRingProtector.unprotectedKeys();
+      publicKey = PGPainless.extractCertificate(secretKey); 
+
       socket = new DatagramSocket();
-      senderThread sendT = new senderThread(socket, serverAddress, port);
-      receiverThread recieveT = new receiverThread(socket);
+      senderThread sendT = new senderThread(socket, serverAddress, port,secretKey, protectorKey, publicKey, uname);
+      receiverThread recieveT = new receiverThread(socket,secretKey, protectorKey, publicKey);
      // senderThread.sendMessage("connect-User@" + uName); //Call sendMessage() with a message telling the server a new user is connecting.
       new Thread(sendT).start(); //Start a sender thread bound to the udpClient
       new Thread(recieveT).start(); //Start a receiver thread bound to the udpClient
-    } catch (IOException e) {
+    } catch (Exception e) {
       System.out.println(e);
     }
   }

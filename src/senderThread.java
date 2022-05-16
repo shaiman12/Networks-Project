@@ -6,35 +6,42 @@ import java.util.Scanner;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
- import java.security.InvalidAlgorithmParameterException;
- import java.security.NoSuchAlgorithmException;
- import org.bouncycastle.openpgp.PGPException;
- import org.bouncycastle.openpgp.PGPPublicKeyRing;
- import org.bouncycastle.openpgp.PGPSecretKeyRing;
- import org.bouncycastle.util.io.Streams;
- import org.pgpainless.PGPainless;
- import org.pgpainless.algorithm.HashAlgorithm;
- import org.pgpainless.algorithm.SymmetricKeyAlgorithm;
- import org.pgpainless.encryption_signing.EncryptionOptions;
- import org.pgpainless.encryption_signing.EncryptionStream;
- import org.pgpainless.encryption_signing.ProducerOptions;
- import org.pgpainless.encryption_signing.SigningOptions;
- import org.pgpainless.key.generation.type.rsa.RsaLength;
- import org.pgpainless.key.info.KeyRingInfo;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.NoSuchAlgorithmException;
+import org.bouncycastle.openpgp.PGPException;
+import org.bouncycastle.openpgp.PGPPublicKeyRing;
+import org.bouncycastle.openpgp.PGPSecretKeyRing;
+import org.pgpainless.key.protection.*;
+import org.bouncycastle.util.io.Streams;
+import org.pgpainless.PGPainless;
+import org.pgpainless.algorithm.HashAlgorithm;
+import org.pgpainless.algorithm.SymmetricKeyAlgorithm;
+import org.pgpainless.encryption_signing.EncryptionOptions;
+import org.pgpainless.encryption_signing.EncryptionStream;
+import org.pgpainless.encryption_signing.ProducerOptions;
+import org.pgpainless.encryption_signing.SigningOptions;
+import org.pgpainless.key.generation.type.rsa.RsaLength;
+import org.pgpainless.algorithm.DocumentSignatureType;
+import org.pgpainless.key.info.KeyRingInfo;
 
- import java.util.*;
+import java.util.*;
+
 /**
- *senderThread
- *This class implements runnable.
- *The class' primary function is to send user input (as a message)
- *to the server which in turn will distribute these messages to relevant receiver threads.
- *A sender thread is run when a udpClient object is created in a 1:1 relationship.
- *Within this class is where user input is requested and processed.
- *To check the integrity of the message being sent, the message’s corresponding hash code is calculated
- *and is appended onto the original message delimited by “@@”.
- *Integrity is then checked when the message arrives at the server.
- *@author FSHJAR002 RSNJOS005
- *@since 2021-03-31
+ * senderThread
+ * This class implements runnable.
+ * The class' primary function is to send user input (as a message)
+ * to the server which in turn will distribute these messages to relevant
+ * receiver threads.
+ * A sender thread is run when a udpClient object is created in a 1:1
+ * relationship.
+ * Within this class is where user input is requested and processed.
+ * To check the integrity of the message being sent, the message’s corresponding
+ * hash code is calculated
+ * and is appended onto the original message delimited by “@@”.
+ * Integrity is then checked when the message arrives at the server.
+ * 
+ * @author FSHJAR002 RSNJOS005
+ * @since 2021-03-31
  */
 
 public class senderThread implements Runnable {
@@ -42,101 +49,145 @@ public class senderThread implements Runnable {
   private static DatagramSocket dSock;
   private static InetAddress serverAddress;
   private static int port;
+  private static PGPSecretKeyRing secretKey = null;
+  private static SecretKeyRingProtector protectorKey = null;
+  private static PGPPublicKeyRing publicKey = null;
+  private static String uname;
+
   public static boolean isConnected;
   public static ArrayList<PGPPublicKeyRing> pubKeyStructure;
 
   /**
    * This is the constructor for the senderThread
-   * @param ds UDP Socket object. Same as the one created in the udpClient object.
+   * 
+   * @param ds       UDP Socket object. Same as the one created in the udpClient
+   *                 object.
    * @param sAddress Server address to send data to.
-   * @param p Server's port number to send data to.
+   * @param p        Server's port number to sen secretKey =
+   *                 PGPainless.generateKeyRing().simpleRsaKeyRing(uname,
+   *                 RsaLength._4096); //secret key
+   *                 protectorKey = SecretKeyRingProtector.unprotectedKeys();
+   *                 publicKey = PGPainless.extractCertificate(secretKey); d data
+   *                 to.
    */
-  public senderThread(DatagramSocket ds, InetAddress sAddress, int p) { //Create a new sender thread that is bound to the relevant Datagram socket.
+  public senderThread(DatagramSocket ds, InetAddress sAddress, int p, PGPSecretKeyRing sK, SecretKeyRingProtector sP,
+      PGPPublicKeyRing pK, String u) { // Create a new sender thread that is bound to the relevant Datagram socket.
     // As well as the server details to which messages must be directed.
     dSock = ds;
     serverAddress = sAddress;
     port = p;
-    isConnected = false;  //isConnected is set to false until the server has confirmed the user can connect.
+    isConnected = false; // isConnected is set to false until the server has confirmed the user can
+                         // connect.
     pubKeyStructure = new ArrayList<PGPPublicKeyRing>();
+    uname = u;
+    secretKey = sK;
+    protectorKey = sP;
+    publicKey = pK;
   }
 
   /**
    * Sender thread starts running. It acts independently of the receiver thread.
-   * The run method continously loops through taking in userinput and sending the message on
+   * The run method continously loops through taking in userinput and sending the
+   * message on
    * until the user closes their client.
    */
   @Override
   public void run() {
-    String uname = "";
-     Scanner input = new Scanner(System.in); // Create a new Scanner for taking in user input.
-     PGPSecretKeyRing secretKey = null;
-     PGPPublicKeyRing publicKeys = null;
-     
-    while (true) {
-      String msg = (input.nextLine()).trim();
-      //Get the message to be sent from user input.
 
-      if (isConnected) {  //If the user has been allowed into the server.
-       System.out.println("printing keys");
-        for (PGPPublicKeyRing pgpPublicKey : pubKeyStructure) {
-          KeyRingInfo ringInfo = new KeyRingInfo(pgpPublicKey);
-          System.out.println(ringInfo.getPrimaryUserId());
-          
-        }
-        sendMessage(msg);
-        System.out.println("DONE sprinting keys");
-       // new Thread(new realiableThread(dSock)).start();
-      } else {            //Try connect the user to the server
-        uname = msg;
-        
+    Scanner input = new Scanner(System.in); // Create a new Scanner for taking in user input.
+
+    String msg = uname;
+
+    try {
+
+      // public key
+      sendPublicKey(publicKey);
+
+    } catch (Exception e) {
+
+      e.printStackTrace();
+    }
+    sendMessage("connect-User@" + msg);
+    // System.out.println("Username is: " + msg);
+
+    while (true) {
+      // block input until at least 2 clients on
+      
+       msg = (input.nextLine()).trim();
+
+      // Get the message to be sent from user input.
+
+      if (isConnected) { // If Stringthe user has been allowed into the server.
 
         try {
+          sendEncryptedMessage(msg);
 
-          secretKey = PGPainless.generateKeyRing().simpleRsaKeyRing(uname, RsaLength._4096);    //secret key
-          publicKeys = PGPainless.extractCertificate(secretKey);                                //public key 
-          sendPublicKey(publicKeys);
-          // System.out.println(secretKey.getPublicKey().getClass());
-          // System.out.println(secretKey.getSecretKey().getClass());
-        } catch (InvalidAlgorithmParameterException | NoSuchAlgorithmException | PGPException e) {
-          // TODO Auto-generated catch block
-          e.printStackTrace();
+        } catch (Exception e) {
+          // TODO: handle exception
         }
-        sendMessage("connect-User@" + msg);
-       // System.out.println("Username is: " + msg);
-        
-
       }
-      if (msg.contains("@exit@")) System.exit(0); //If the user requests to shut their client down then the application is closed.
+      if (msg.contains("@exit@"))
+        System.exit(0); // If the user requests to shut their client down then the application is
+                        // closed.
+      // System.out.println("DONE printing keys");
+      // new Thread(new realiableThread(dSock)).start();
     }
+
+  }
+  // input.close();
+
+
+  private static void sendEncryptedMessage(String msg) throws PGPException, IOException {
+    ByteArrayOutputStream ciphertext = new ByteArrayOutputStream();
+    // Encrypt and sign
+    EncryptionStream encryptor = PGPainless.encryptAndOrSign()
+        .onOutputStream(ciphertext)
+        .withOptions(ProducerOptions.signAndEncrypt(
+            // we want to encrypt communication (affects key selection based on key flags)
+            EncryptionOptions.encryptCommunications()
+                .addRecipients(pubKeyStructure),
+            new SigningOptions()
+                .addInlineSignature(protectorKey, secretKey, DocumentSignatureType.CANONICAL_TEXT_DOCUMENT))
+            .setAsciiArmor(true));
+
+    // Pipe data trough and CLOSE the stream (important)
+    Streams.pipeAll(new ByteArrayInputStream(msg.getBytes(StandardCharsets.UTF_8)), encryptor);
+    encryptor.close();
+    String encryptedMessage = ciphertext.toString();
+    sendMessage(encryptedMessage);
+
   }
 
   /**
    * Sendmessage function is where the actual sending of the data occurs.
-   * This is done through first making a packet which contains the data and the destination address.
+   * This is done through first making a packet which contains the data and the
+   * destination address.
    * Then the data is sent with the DatagramSocket.send() function.
-   * The message being sent has a hashcode appended onto it for checking integrity at the receiving end.
+   * The message being sent has a hashcode appended onto it for checking integrity
+   * at the receiving end.
+   * 
    * @param msg The message to be sent.
    */
 
   public static void sendMessage(String msg) { // This is a simple sendmessage method to send to server.
-   // msg = buildMessageChecksum(msg);  //Add checksum to message
-    byte[] buf = msg.getBytes(); //buffer built from the message.
+    // msg = buildMessageChecksum(msg); //Add checksum to message
+    byte[] buf = msg.getBytes(); // buffer built from the message.
 
-    DatagramPacket packet = new DatagramPacket( // Create a packet of The buffer, buffer length as well as the IP and port of the server.
-      buf,
-      buf.length,
-      serverAddress,
-      port
-    );
+    DatagramPacket packet = new DatagramPacket( // Create a packet of The buffer, buffer length as well as the IP and
+                                                // port of the server.
+        buf,
+        buf.length,
+        serverAddress,
+        port);
 
     try {
-      dSock.send(packet); //Try send the message.
+      dSock.send(packet); // Try send the message.
     } catch (IOException e) {
       System.out.println(e);
     }
   }
 
-  public static void sendPublicKey(PGPPublicKeyRing keys){
+  public static void sendPublicKey(PGPPublicKeyRing keys) {
 
     try {
       String asciiArmoredPublicKey = PGPainless.asciiArmor(keys);
@@ -147,21 +198,22 @@ public class senderThread implements Runnable {
       e.printStackTrace();
     }
 
-    
-
   }
 
   /**
    * Simple method to create a basic checksum for integrity checking purposes.
-   * The hashcode generated is appended to the original message and then checked at the receiving end.
+   * The hashcode generated is appended to the original message and then checked
+   * at the receiving end.
+   * 
    * @param msg The message to be sent.
-   * @return The message being sent plus the generated hashcode delimmited by '@@'.
+   * @return The message being sent plus the generated hashcode delimmited by
+   *         '@@'.
    */
 
   public static String buildMessageChecksum(String msg) {
-    String hash = String.valueOf(msg.hashCode()); //Generate a hashcode of the message to be sent.
+    String hash = String.valueOf(msg.hashCode()); // Generate a hashcode of the message to be sent.
 
-    msg += "@@" + hash; //Append the hashcode onto the message. Delimtted by the '@@'.
+    msg += "@@" + hash; // Append the hashcode onto the message. Delimtted by the '@@'.
 
     return msg;
   }

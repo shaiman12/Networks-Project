@@ -170,6 +170,8 @@ public class udpServer extends Thread {
         String username = received.substring(x + 1, received.length());
           if (allowedUsers.contains(username)) {
            
+            //Update new client's public key list with everyother client's public key
+            manageClientBase(username, address, port); // Call the manageClientBase method to create a new client object
             
             for (int i = 0; i < clientArrayList.size(); i++) {
               msg = "KEYUPDATE@";
@@ -177,9 +179,16 @@ public class udpServer extends Thread {
               sendMessage(msg, address, port);
               
             }
-            manageClientBase(username, address, port); // Call the manageClientBase method to create a new client object
-              
 
+            
+            //Update all connected client's with new client's public key
+
+            msg = "KEYUPDATE@";
+
+            //Potential race condition
+            //potential solution: clientArrayList.get(username).getPublicKey()
+            broadCastMessage(msg+convertClientPubKeyToString(publicKey), username, false);
+            
             msg = "Current users in chat: ";
             for (int i = 0; i < clientArrayList.size(); i++)
               msg += clientArrayList.get(i).getUsername() + " ";
