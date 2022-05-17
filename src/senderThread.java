@@ -112,8 +112,8 @@ public class senderThread implements Runnable {
 
     while (true) {
       // block input until at least 2 clients on
-      
-       msg = (input.nextLine()).trim();
+
+      msg = (input.nextLine()).trim();
 
       // Get the message to be sent from user input.
 
@@ -136,7 +136,6 @@ public class senderThread implements Runnable {
   }
   // input.close();
 
-
   private static void sendEncryptedMessage(String msg) throws PGPException, IOException {
     ByteArrayOutputStream ciphertext = new ByteArrayOutputStream();
     // Encrypt and sign
@@ -145,9 +144,13 @@ public class senderThread implements Runnable {
         .withOptions(ProducerOptions.signAndEncrypt(
             // we want to encrypt communication (affects key selection based on key flags)
             EncryptionOptions.encryptCommunications()
-                .addRecipients(pubKeyStructure),
+                .addRecipients(pubKeyStructure)
+                .overrideEncryptionAlgorithm(SymmetricKeyAlgorithm.AES_256),
             new SigningOptions()
-                .addInlineSignature(protectorKey, secretKey, DocumentSignatureType.CANONICAL_TEXT_DOCUMENT))
+                .addInlineSignature(protectorKey, secretKey, DocumentSignatureType.CANONICAL_TEXT_DOCUMENT)
+                .overrideHashAlgorithm(
+                    HashAlgorithm.SHA256))
+
             .setAsciiArmor(true));
 
     // Pipe data trough and CLOSE the stream (important)
