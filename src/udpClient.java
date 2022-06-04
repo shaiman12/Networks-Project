@@ -62,6 +62,7 @@ public class udpClient {
       
 
       secretKey = PGPainless.generateKeyRing().simpleRsaKeyRing(uname, RsaLength._4096);    //secret key
+  
       protectorKey = SecretKeyRingProtector.unprotectedKeys();
       publicKey = PGPainless.extractCertificate(secretKey); 
 

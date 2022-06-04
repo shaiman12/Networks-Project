@@ -34,6 +34,8 @@ import org.pgpainless.encryption_signing.EncryptionStream;
 import org.pgpainless.encryption_signing.ProducerOptions;
 import org.pgpainless.encryption_signing.SigningOptions;
 
+
+
 /**
  * receiverThread This class implements runnable. This class' primary function
  * is to receive messages distributed by the server and print them to screen.
@@ -52,10 +54,36 @@ import org.pgpainless.encryption_signing.SigningOptions;
 
 class receiverThread implements Runnable {
 
+ 
+
+      private static final String caPubKey = "-----BEGIN PGP PUBLIC KEY BLOCK-----\n" +
+      "Version: PGPainless\n" +
+      "Comment: 12E3 4F04 C66D 2B70 D16C  960D ACF2 16F0 F93D DD20\n" +
+      "Comment: alice@pgpainless.org\n" +
+      "\n" +
+      "mDMEYksu1hYJKwYBBAHaRw8BAQdAIhUpRrs6zFTBI1pK40jCkzY/DQ/t4fUgNtlS\n" +
+      "mXOt1cK0FGFsaWNlQHBncGFpbmxlc3Mub3JniI8EExYKAEEFAmJLLtYJEKzyFvD5\n" +
+      "Pd0gFiEEEuNPBMZtK3DRbJYNrPIW8Pk93SACngECmwEFFgIDAQAECwkIBwUVCgkI\n" +
+      "CwKZAQAA45MBAN9SxFBICzR382bhgiur6BTuA51Mm5/fd/+7+7WcYzV8AP9Fjsje\n" +
+      "BChnSVZu9dWREAsK71xQl28vuSlbWhi1iDbVC7g4BGJLLtYSCisGAQQBl1UBBQEB\n" +
+      "B0DrQXziToxj9TIEJl7j9Y/wkPD8R+7n8bKTyFx3cfMcWwMBCAeIdQQYFgoAHQUC\n" +
+      "Yksu1gKeAQKbDAUWAgMBAAQLCQgHBRUKCQgLAAoJEKzyFvD5Pd0gnegA/2Nyxdkb\n" +
+      "4GxGjgbQLx+sNGQT6Kwd65OncfgHtBr1uBPMAPkB5oDaNKXZA8U5dATdSguwVdYk\n" +
+      "RanvVaO31tiy34ZRBLgzBGJLLtYWCSsGAQQB2kcPAQEHQD7amqdtf85lc8Th5Pvv\n" +
+      "PdfxGUjYpMFpKvbdKZmI4bSfiNUEGBYKAH0FAmJLLtYCngECmwIFFgIDAQAECwkI\n" +
+      "BwUVCgkIC18gBBkWCgAGBQJiSy7WAAoJEOEz2Vo79YylzN0A/iZAVklSJsfQslsh\n" +
+      "R6/zMBufwCK1S05jg/5Ydaksv3QcAQC4gsxdFFne+H4Mmos4atad6hMhlqr0/Zyc\n" +
+      "71ZdO5I/CAAKCRCs8hbw+T3dIGhqAQCIdVtCus336cDeNug+E9v1PEM3F/dt6GAq\n" +
+      "SG8LJqdAGgEA8cUXdUBooOo/QBkDnpteke8Z3IhIGyGedc8OwJyVFwc=\n" +
+      "=GUhm\n" +
+      "-----END PGP PUBLIC KEY BLOCK-----\n";
+
   private DatagramSocket dSock;
   private static PGPSecretKeyRing secretKey = null;
   private static SecretKeyRingProtector protectorKey = null;
   private static PGPPublicKeyRing publicKey = null;
+
+  private static PGPPublicKeyRing certificateAuthorityPublicKey;
 
   /**
    * Constructor for receiverThread. Sets the DatagramSocket without specifying a
@@ -81,6 +109,13 @@ class receiverThread implements Runnable {
     secretKey = sK;
     protectorKey = sP;
     publicKey = pK;
+
+    try {
+      certificateAuthorityPublicKey = PGPainless.readKeyRing().publicKeyRing(caPubKey);
+    } catch (Exception e) {
+      // TODO: handle exception
+      System.out.println("biiiiigg ERROR");
+    }
   }
 
   /**
@@ -108,17 +143,56 @@ class receiverThread implements Runnable {
       // int iHash = 0; //changed
       String msg = str;
       String errorMsg = "Message corrupted here at receiver side. Please resend Message.";
-
+      
       if (str.contains("KEYUPDATE@")) {
         // addd all public keys to public key data structure
         try {
           int x = str.indexOf("@");
           // Hash username to key
+          msg = msg.substring(x + 1, msg.length()).trim();
+         
+          ByteArrayInputStream signedIn = new ByteArrayInputStream(msg.getBytes(StandardCharsets.UTF_8));
+          
+          // and pass it to the decryption stream
+          DecryptionStream verificationStream = PGPainless.decryptAndOrVerify()
+              .onInputStream(signedIn)
+              .withOptions(new ConsumerOptions().addVerificationCert(certificateAuthorityPublicKey));
 
-          senderThread.pubKeyStructure.add(PGPainless.readKeyRing().publicKeyRing(str.substring(x + 1, str.length())));
+          // plain will receive the plaintext message
+        
+
+          ByteArrayOutputStream plain = new ByteArrayOutputStream();
+          Streams.pipeAll(verificationStream, plain);
+
+          verificationStream.close(); // as always, remember to close the stream
+        
+          OpenPgpMetadata metadata = verificationStream.getResult();
+
+          if(metadata.containsVerifiedSignatureFrom(certificateAuthorityPublicKey)){
+
+            int posBegin = msg.indexOf("-----BEGIN PGP PUBLIC KEY BLOCK-----");
+            int posEnd = msg.indexOf("-----END PGP PUBLIC KEY BLOCK-----"); 
+           
+            
+            String pubKeyString = msg.substring(posBegin, posEnd-2) + "-----END PGP PUBLIC KEY BLOCK-----";
+           
+            PGPPublicKeyRing newClientPubKey = PGPainless.readKeyRing().publicKeyRing(pubKeyString);
+            KeyRingInfo keyInfo = new KeyRingInfo(newClientPubKey);
+            String uName = keyInfo.getPrimaryUserId();
+            
+            senderThread.clientToPubKeyHashTable.put(uName, newClientPubKey);
+
+          }
+         
+          else
+          System.out.println("error, certificate not signed by trusted CA");
+       
+          
+
 
         } catch (Exception e) {
           // TODO: handle exception
+          System.out.println(e);
         }
         continue;
       }
@@ -126,41 +200,37 @@ class receiverThread implements Runnable {
       if (str.contains("connected@")) {
         senderThread.isConnected = true;
         int x = str.indexOf("@");
-        // int z = str.lastIndexOf("@"); //changed
+     
         String username = str.substring(x + 1, str.length()); // changed
         printWelcomeInformation(username);
         continue;
-      } // else if (str.contains("@Corrupted, please resend message.@")) { // This would
-        // be the case if the message was
-        // corrupted between the original sender and the
-        // server, or at the server itself.
-        // System.out.println("Corrupted at server side. Please resend message.");
-        // else { // If the message arrived and was not corrupted between the original
-        // sender or
-        // at the server.
-        // y = str.lastIndexOf("@");
-        // msg = str.substring(0, y - 1); // Find the actual message sent along with the
-        // packet.
-        // iHash = Integer.valueOf(str.substring(y + 1, str.length())); // Extract the
-        // hashcode from the packet. //commented out
-      // }
+      } 
 
       if (str.contains("@shutdown@ by user:"))
         System.out.println( // If any client shuts the server down, all clients are notified.
             "Server has been shutdown, please exit client.");
-      // else if (iHash == msg.hashCode())
-      // System.out.println(msg); // If the hashcode that was sent along with the
-      // message //commented out
-      // matches the hashcode calculated now, the message is printed.
+ 
+      if (str.contains(") has entered the chat")){
+        System.out.println(str);
+        continue;
+      }
+
+      if (str.contains("Current users in chat:")){
+        System.out.println(str);
+        continue;
+      }
+      
 
       // we decrypt here
       else {
-        int pos = msg.indexOf("]") + 1;
-        String uNameTemp = (msg.substring(0, pos)).trim();
-        String encryptedString =  (msg.substring(pos, msg.length())).trim();
+       
+        int pos = msg.indexOf("]");
+        String uName = msg.substring(1, pos);
+        
+        String encryptedString = (msg.substring(pos+1, msg.length())).trim();
 
         try {
-          System.out.println(uNameTemp + " " + decryptMessage(encryptedString));
+          System.out.println("[" + uName + "] " + decryptMessage(encryptedString, uName));
         } catch (Exception e) {
           // TODO: handle exception
 
@@ -171,19 +241,28 @@ class receiverThread implements Runnable {
     }
   }
 
-  private static String decryptMessage(String msg) throws PGPException, IOException {
+  private static String decryptMessage(String msg, String uname) throws PGPException, IOException {
 
     DecryptionStream decryptor = PGPainless.decryptAndOrVerify()
         .onInputStream(new ByteArrayInputStream(msg.getBytes(StandardCharsets.UTF_8)))
         .withOptions(new ConsumerOptions()
-            .addDecryptionKey(secretKey, protectorKey) );
-            
+            .addDecryptionKey(secretKey, protectorKey)
+            .addVerificationCert(senderThread.clientToPubKeyHashTable.get(uname)));
 
     ByteArrayOutputStream plaintext = new ByteArrayOutputStream();
 
     Streams.pipeAll(decryptor, plaintext);
     decryptor.close();
+    OpenPgpMetadata metadata = decryptor.getResult();
+    // System.out.println("Encrypted: " + metadata.isEncrypted());
+    // System.out.println("Verified: " + metadata.containsVerifiedSignatureFrom(senderThread.clientToPubKeyHashTable.get(uname)));
+    // System.out.println("Signed: " + metadata.isSigned());
+    //add something here for if it was not correctly signed
+    if( !(metadata.containsVerifiedSignatureFrom(senderThread.clientToPubKeyHashTable.get(uname))) )
+    System.out.println("WARNING: Message verification failed. Message was not signed by " + uname);
 
+    if( !(metadata.isEncrypted()) )
+    System.out.println("WARNING: Message was not encrypted in transit. Confidentiality lost");
 
 
     return plaintext.toString();

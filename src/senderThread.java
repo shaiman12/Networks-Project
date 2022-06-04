@@ -23,6 +23,11 @@ import org.pgpainless.encryption_signing.SigningOptions;
 import org.pgpainless.key.generation.type.rsa.RsaLength;
 import org.pgpainless.algorithm.DocumentSignatureType;
 import org.pgpainless.key.info.KeyRingInfo;
+import org.pgpainless.util.Passphrase;
+import java.nio.charset.Charset;
+import org.bouncycastle.bcpg.ArmoredInputStream;
+import org.bouncycastle.bcpg.ArmoredOutputStream;
+import java.util.Hashtable;
 
 import java.util.*;
 
@@ -46,6 +51,10 @@ import java.util.*;
 
 public class senderThread implements Runnable {
 
+
+ 
+
+
   private static DatagramSocket dSock;
   private static InetAddress serverAddress;
   private static int port;
@@ -53,9 +62,10 @@ public class senderThread implements Runnable {
   private static SecretKeyRingProtector protectorKey = null;
   private static PGPPublicKeyRing publicKey = null;
   private static String uname;
+  
 
   public static boolean isConnected;
-  public static ArrayList<PGPPublicKeyRing> pubKeyStructure;
+  public static Hashtable<String, PGPPublicKeyRing> clientToPubKeyHashTable;
 
   /**
    * This is the constructor for the senderThread
@@ -78,7 +88,7 @@ public class senderThread implements Runnable {
     port = p;
     isConnected = false; // isConnected is set to false until the server has confirmed the user can
                          // connect.
-    pubKeyStructure = new ArrayList<PGPPublicKeyRing>();
+    clientToPubKeyHashTable = new Hashtable<String, PGPPublicKeyRing>();
     uname = u;
     secretKey = sK;
     protectorKey = sP;
@@ -98,16 +108,8 @@ public class senderThread implements Runnable {
 
     String msg = uname;
 
-    try {
-
-      // public key
-      sendPublicKey(publicKey);
-
-    } catch (Exception e) {
-
-      e.printStackTrace();
-    }
-    sendMessage("connect-User@" + msg);
+  
+    sendMessage("connect-User@" + msg + "#" + armourPublicKey(publicKey));
     // System.out.println("Username is: " + msg);
 
     while (true) {
@@ -144,7 +146,7 @@ public class senderThread implements Runnable {
         .withOptions(ProducerOptions.signAndEncrypt(
             // we want to encrypt communication (affects key selection based on key flags)
             EncryptionOptions.encryptCommunications()
-                .addRecipients(pubKeyStructure)
+                .addRecipients(clientToPubKeyHashTable.values())
                 .overrideEncryptionAlgorithm(SymmetricKeyAlgorithm.AES_256),
             new SigningOptions()
                 .addInlineSignature(protectorKey, secretKey, DocumentSignatureType.CANONICAL_TEXT_DOCUMENT)
@@ -190,16 +192,75 @@ public class senderThread implements Runnable {
     }
   }
 
-  public static void sendPublicKey(PGPPublicKeyRing keys) {
+  public static String armourPublicKey(PGPPublicKeyRing keys) {
 
-    try {
-      String asciiArmoredPublicKey = PGPainless.asciiArmor(keys);
+    // try {
+    // ByteArrayOutputStream ciphertext = new ByteArrayOutputStream();
+    // // Encrypt
+    // EncryptionStream encryptor;
+    // try {
+    // encryptor = PGPainless.encryptAndOrSign()
+    // .onOutputStream(ciphertext)
+    // .withOptions(ProducerOptions
+    // .encrypt(EncryptionOptions.encryptCommunications()
+    // .addPassphrase(Passphrase.fromPassword("p4ssphr4s3")))
+    // .setAsciiArmor(true));
+    // ByteArrayOutputStream baosPkr = new ByteArrayOutputStream();
 
-      sendMessage(asciiArmoredPublicKey);
-    } catch (IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
+    // ArmoredOutputStream armoredStreamPkr = new ArmoredOutputStream(baosPkr);
+    // keys.encode(armoredStreamPkr);
+    // armoredStreamPkr.close();
+
+    // Streams.pipeAll(
+    // new ByteArrayInputStream(
+    // (new String(baosPkr.toByteArray(),
+    // Charset.defaultCharset())).getBytes(StandardCharsets.UTF_8)),
+    // encryptor);
+    // encryptor.close();
+
+    // String asciiCiphertext = ciphertext.toString();
+
+    // sendMessage(asciiCiphertext);
+    // } catch (PGPException e) {
+    // // TODO Auto-generated catch block
+    // e.printStackTrace();
+    // }
+
+    // } catch (IOException e) {
+    // // TODO Auto-generated catch block
+    // e.printStackTrace();
+    // }
+    String msgTemp = "";
+      try {
+        ByteArrayOutputStream ciphertext = new ByteArrayOutputStream();
+        // Encrypt
+        EncryptionStream encryptor = PGPainless.encryptAndOrSign()
+                .onOutputStream(ciphertext)
+                .withOptions(ProducerOptions
+                        .encrypt(EncryptionOptions.encryptCommunications()
+                                .addPassphrase(Passphrase.fromPassword("p4ssphr4s3"))
+                        ).setAsciiArmor(true)
+                );
+    
+        Streams.pipeAll(new ByteArrayInputStream((PGPainless.asciiArmor(keys)).getBytes(StandardCharsets.UTF_8)), encryptor);
+        encryptor.close();
+    
+        msgTemp = ciphertext.toString();
+       
+        //sendMessage(asciiCiphertext);
+      } catch (Exception e) {
+        //TODO: handle exception
+      }
+      return msgTemp;
+
+    // try {
+    //   String asciiArmoredPublicKey = PGPainless.asciiArmor(keys);
+
+    //   sendMessage(asciiArmoredPublicKey);
+    // } catch (IOException e) {
+    //   // TODO Auto-generated catch block
+    //   e.printStackTrace();
+    // }
 
   }
 

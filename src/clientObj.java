@@ -23,7 +23,7 @@ public class clientObj { // Basic client object. Used exclusively by the udpServ
   private InetAddress address;
   private int port;
   private PGPPublicKeyRing publicKey = null;
-
+  private String certificate = null; 
 
   /**
    * Construction of this object requires a username, an IP address and a port
@@ -34,12 +34,13 @@ public class clientObj { // Basic client object. Used exclusively by the udpServ
    * @param p The port number of the client
    */
 
-  public clientObj(String u, InetAddress a, int p, PGPPublicKeyRing pk) { // Client is created with their particular username, IP address and
+  public clientObj(String u, InetAddress a, int p, PGPPublicKeyRing pk, String c) { // Client is created with their particular username, IP address and
                                                      // port.
     userName = u;
     address = a;
     port = p;
     publicKey = pk;
+    certificate = c;
   }
 
   /**
@@ -55,9 +56,14 @@ public class clientObj { // Basic client object. Used exclusively by the udpServ
     return publicKey;
   }
 
+  public String getCertificate(){
+    return certificate;
+  }
+
   /**
    * Accesor method for returning the client's IP address
    * 
+   * Accesor method for returning the
    * @return The client's IP address
    */
   public InetAddress getInetAddress() {
