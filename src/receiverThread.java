@@ -34,6 +34,7 @@ import org.pgpainless.decryption_verification.OpenPgpMetadata;
 import org.pgpainless.encryption_signing.EncryptionStream;
 import org.pgpainless.encryption_signing.ProducerOptions;
 import org.pgpainless.encryption_signing.SigningOptions;
+import org.pgpainless.util.ArmorUtils;
 
 /**
  * receiverThread This class implements runnable. This class' primary function
@@ -203,9 +204,8 @@ public class receiverThread implements Runnable {
       if (str.contains("@shutdown@ by user:")) {
         System.out.println( // If any client shuts the server down, all clients are notified.
             "Server has been shutdown, closing Client.");
-            System.exit(0);
+        System.exit(0);
       }
-        
 
       if (str.contains(") has entered the chat")) {
         System.out.println(str);
@@ -220,13 +220,13 @@ public class receiverThread implements Runnable {
       if (str.contains(
           "The username you entered is linked to a client already logged in. Please restart client and enter valid username.")) {
         System.out.println(str);
-        System.exit(1);
+        System.exit(0);
 
       }
 
       if (str.contains("You are not on the server whitelist. Please restart client and enter valid username.")) {
         System.out.println(str);
-        System.exit(1);
+        System.exit(0);
 
       }
 
@@ -261,6 +261,7 @@ public class receiverThread implements Runnable {
         .onInputStream(new ByteArrayInputStream(msg.getBytes(StandardCharsets.UTF_8)))
         .withOptions(new ConsumerOptions()
             .addDecryptionKey(secretKey, protectorKey)
+            
             .addVerificationCert(senderThread.clientToPubKeyHashTable.get(uname)));
 
     ByteArrayOutputStream plaintext = new ByteArrayOutputStream();
@@ -274,21 +275,16 @@ public class receiverThread implements Runnable {
       System.out.println("Session key: " + metadata.getSessionKey().toString());
       System.out.println("Session key Algorithm: " + metadata.getSymmetricKeyAlgorithm().toString());
       System.out.println("Compression Algorithm: " + metadata.getCompressionAlgorithm().toString());
-      
-      
-      
+
       System.out.println("Contains verified signature from " + uname
-      + " : " + metadata.containsVerifiedSignatureFrom(senderThread.clientToPubKeyHashTable.get(uname)));
+          + " : " + metadata.containsVerifiedSignatureFrom(senderThread.clientToPubKeyHashTable.get(uname)));
 
       for (PGPSignature cig : metadata.getSignatures()) {
-      
+        System.out.println(ArmorUtils.toAsciiArmoredString(cig.getEncoded()));
+       
       }
     }
-    // System.out.println("Encrypted: " + metadata.isEncrypted());
-    // System.out.println("Verified: " +
-    // metadata.conainsVerifiedSignatureFrom(senderThread.clientToPubKeyHashTable.get(uname)));
-    // System.out.println("Signed: " + metadata.isSigned());
-    // add something here for if it was not correctly signed
+ 
     if (!(metadata.containsVerifiedSignatureFrom(senderThread.clientToPubKeyHashTable.get(uname))))
       System.out.println("WARNING: Message verification failed. Message was not signed by " + uname);
 

@@ -157,7 +157,9 @@ public class udpServer extends Thread {
     }
 
     try {
-      certificateAuthorityPrivateKey = PGPainless.readKeyRing().secretKeyRing(CA_privKey);
+     certificateAuthorityPrivateKey = PGPainless.readKeyRing().secretKeyRing(CA_privKey);
+
+     // certificateAuthorityPrivateKey = PGPainless.readKeyRing().secretKeyRing(CA_privKeyBAD);
  
     } catch (Exception e) {
       // TODO: handle exception

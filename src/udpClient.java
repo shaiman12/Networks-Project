@@ -83,24 +83,11 @@ public class udpClient {
       serverAddress = InetAddress.getByName(destinationAddr);
       Scanner input = new Scanner(System.in);
       String uname = (input.nextLine()).trim();
-    //  input.close();
-      
-
+ 
       secretKey = PGPainless.generateKeyRing().simpleRsaKeyRing(uname, RsaLength._4096);    //secret key
-  
       protectorKey = SecretKeyRingProtector.unprotectedKeys();
       publicKey = PGPainless.extractCertificate(secretKey); 
       
-
-      //MASQUERADE ATTACK SCENARIO:
-      // PGPSecretKeyRing secretKeyGood = PGPainless.generateKeyRing().simpleRsaKeyRing(uname, RsaLength._4096);
-      // PGPSecretKeyRing secretKeyBad = PGPainless.readKeyRing().secretKeyRing(privKeyBAD);
-      // secretKey = secretKeyBad;
-
-      // publicKey = PGPainless.extractCertificate(secretKeyGood); 
-      
-      
-
       socket = new DatagramSocket();
       senderThread sendT = new senderThread(socket, serverAddress, port,secretKey, protectorKey, publicKey, uname, debug);
       receiverThread recieveT = new receiverThread(socket,secretKey, protectorKey, debug);

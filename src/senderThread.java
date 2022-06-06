@@ -7,6 +7,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import org.bouncycastle.openpgp.PGPException;
 import org.bouncycastle.openpgp.PGPPublicKeyRing;
@@ -17,6 +18,7 @@ import org.pgpainless.PGPainless;
 import org.pgpainless.algorithm.HashAlgorithm;
 import org.pgpainless.algorithm.SymmetricKeyAlgorithm;
 import org.pgpainless.encryption_signing.EncryptionOptions;
+import org.pgpainless.encryption_signing.EncryptionResult;
 import org.pgpainless.encryption_signing.EncryptionStream;
 import org.pgpainless.encryption_signing.ProducerOptions;
 import org.pgpainless.encryption_signing.SigningOptions;
@@ -122,17 +124,17 @@ public class senderThread implements Runnable {
       if (isConnected) { // If Stringthe user has been allowed into the server.
 
         try {
-          if(msg.equals("@exit@") || msg.equals("@shutdown@"))
-          sendMessage(msg);
+          if (msg.equals("@exit@") || msg.equals("@shutdown@"))
+            sendMessage(msg);
 
           else
 
-          sendEncryptedMessage(msg);
+            sendEncryptedMessage(msg);
 
         } catch (Exception e) {
           // TODO: handle exception
         }
-      } 
+      }
       if (msg.contains("@exit@"))
         System.exit(0); // If the user requests to shut their client down then the application is
                         // closed.
@@ -154,6 +156,7 @@ public class senderThread implements Runnable {
                 .overrideEncryptionAlgorithm(SymmetricKeyAlgorithm.AES_256),
             new SigningOptions()
                 .addInlineSignature(protectorKey, secretKey, DocumentSignatureType.CANONICAL_TEXT_DOCUMENT)
+              //  .addDetachedSignature(protectorKey, secretKey, DocumentSignatureType.CANONICAL_TEXT_DOCUMENT)
                 .overrideHashAlgorithm(
                     HashAlgorithm.SHA256))
 
@@ -163,6 +166,8 @@ public class senderThread implements Runnable {
     Streams.pipeAll(new ByteArrayInputStream(msg.getBytes(StandardCharsets.UTF_8)), encryptor);
     encryptor.close();
     String encryptedMessage = ciphertext.toString();
+
+    
     sendMessage(encryptedMessage);
 
   }
@@ -221,6 +226,5 @@ public class senderThread implements Runnable {
     return msgTemp;
 
   }
-
 
 }
