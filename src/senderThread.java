@@ -51,10 +51,6 @@ import java.util.*;
 
 public class senderThread implements Runnable {
 
-
- 
-
-
   private static DatagramSocket dSock;
   private static InetAddress serverAddress;
   private static int port;
@@ -62,9 +58,10 @@ public class senderThread implements Runnable {
   private static SecretKeyRingProtector protectorKey = null;
   private static PGPPublicKeyRing publicKey = null;
   private static String uname;
-  
+  private static Boolean debugOn;
 
   public static boolean isConnected;
+
   public static Hashtable<String, PGPPublicKeyRing> clientToPubKeyHashTable;
 
   /**
@@ -81,18 +78,22 @@ public class senderThread implements Runnable {
    *                 to.
    */
   public senderThread(DatagramSocket ds, InetAddress sAddress, int p, PGPSecretKeyRing sK, SecretKeyRingProtector sP,
-      PGPPublicKeyRing pK, String u) { // Create a new sender thread that is bound to the relevant Datagram socket.
+      PGPPublicKeyRing pK, String u, boolean debug) { // Create a new sender thread that is bound to the relevant
+                                                      // Datagram socket.
     // As well as the server details to which messages must be directed.
     dSock = ds;
     serverAddress = sAddress;
     port = p;
     isConnected = false; // isConnected is set to false until the server has confirmed the user can
                          // connect.
+
     clientToPubKeyHashTable = new Hashtable<String, PGPPublicKeyRing>();
     uname = u;
     secretKey = sK;
     protectorKey = sP;
     publicKey = pK;
+
+    debugOn = debug;
   }
 
   /**
@@ -108,7 +109,6 @@ public class senderThread implements Runnable {
 
     String msg = uname;
 
-  
     sendMessage("connect-User@" + msg + "#" + armourPublicKey(publicKey));
     // System.out.println("Username is: " + msg);
 
@@ -122,12 +122,17 @@ public class senderThread implements Runnable {
       if (isConnected) { // If Stringthe user has been allowed into the server.
 
         try {
+          if(msg.equals("@exit@") || msg.equals("@shutdown@"))
+          sendMessage(msg);
+
+          else
+
           sendEncryptedMessage(msg);
 
         } catch (Exception e) {
           // TODO: handle exception
         }
-      }
+      } 
       if (msg.contains("@exit@"))
         System.exit(0); // If the user requests to shut their client down then the application is
                         // closed.
@@ -136,7 +141,6 @@ public class senderThread implements Runnable {
     }
 
   }
-  // input.close();
 
   private static void sendEncryptedMessage(String msg) throws PGPException, IOException {
     ByteArrayOutputStream ciphertext = new ByteArrayOutputStream();
@@ -175,7 +179,7 @@ public class senderThread implements Runnable {
    */
 
   public static void sendMessage(String msg) { // This is a simple sendmessage method to send to server.
-    // msg = buildMessageChecksum(msg); //Add checksum to message
+
     byte[] buf = msg.getBytes(); // buffer built from the message.
 
     DatagramPacket packet = new DatagramPacket( // Create a packet of The buffer, buffer length as well as the IP and
@@ -194,91 +198,29 @@ public class senderThread implements Runnable {
 
   public static String armourPublicKey(PGPPublicKeyRing keys) {
 
-    // try {
-    // ByteArrayOutputStream ciphertext = new ByteArrayOutputStream();
-    // // Encrypt
-    // EncryptionStream encryptor;
-    // try {
-    // encryptor = PGPainless.encryptAndOrSign()
-    // .onOutputStream(ciphertext)
-    // .withOptions(ProducerOptions
-    // .encrypt(EncryptionOptions.encryptCommunications()
-    // .addPassphrase(Passphrase.fromPassword("p4ssphr4s3")))
-    // .setAsciiArmor(true));
-    // ByteArrayOutputStream baosPkr = new ByteArrayOutputStream();
-
-    // ArmoredOutputStream armoredStreamPkr = new ArmoredOutputStream(baosPkr);
-    // keys.encode(armoredStreamPkr);
-    // armoredStreamPkr.close();
-
-    // Streams.pipeAll(
-    // new ByteArrayInputStream(
-    // (new String(baosPkr.toByteArray(),
-    // Charset.defaultCharset())).getBytes(StandardCharsets.UTF_8)),
-    // encryptor);
-    // encryptor.close();
-
-    // String asciiCiphertext = ciphertext.toString();
-
-    // sendMessage(asciiCiphertext);
-    // } catch (PGPException e) {
-    // // TODO Auto-generated catch block
-    // e.printStackTrace();
-    // }
-
-    // } catch (IOException e) {
-    // // TODO Auto-generated catch block
-    // e.printStackTrace();
-    // }
     String msgTemp = "";
-      try {
-        ByteArrayOutputStream ciphertext = new ByteArrayOutputStream();
-        // Encrypt
-        EncryptionStream encryptor = PGPainless.encryptAndOrSign()
-                .onOutputStream(ciphertext)
-                .withOptions(ProducerOptions
-                        .encrypt(EncryptionOptions.encryptCommunications()
-                                .addPassphrase(Passphrase.fromPassword("p4ssphr4s3"))
-                        ).setAsciiArmor(true)
-                );
-    
-        Streams.pipeAll(new ByteArrayInputStream((PGPainless.asciiArmor(keys)).getBytes(StandardCharsets.UTF_8)), encryptor);
-        encryptor.close();
-    
-        msgTemp = ciphertext.toString();
-       
-        //sendMessage(asciiCiphertext);
-      } catch (Exception e) {
-        //TODO: handle exception
-      }
-      return msgTemp;
+    try {
+      ByteArrayOutputStream ciphertext = new ByteArrayOutputStream();
+      // Encrypt
+      EncryptionStream encryptor = PGPainless.encryptAndOrSign()
+          .onOutputStream(ciphertext)
+          .withOptions(ProducerOptions
+              .encrypt(EncryptionOptions.encryptCommunications()
+                  .addPassphrase(Passphrase.fromPassword("p4ssphr4s3")))
+              .setAsciiArmor(true));
 
-    // try {
-    //   String asciiArmoredPublicKey = PGPainless.asciiArmor(keys);
+      Streams.pipeAll(new ByteArrayInputStream((PGPainless.asciiArmor(keys)).getBytes(StandardCharsets.UTF_8)),
+          encryptor);
+      encryptor.close();
 
-    //   sendMessage(asciiArmoredPublicKey);
-    // } catch (IOException e) {
-    //   // TODO Auto-generated catch block
-    //   e.printStackTrace();
-    // }
+      msgTemp = ciphertext.toString();
+
+    } catch (Exception e) {
+      System.out.println(e);
+    }
+    return msgTemp;
 
   }
 
-  /**
-   * Simple method to create a basic checksum for integrity checking purposes.
-   * The hashcode generated is appended to the original message and then checked
-   * at the receiving end.
-   * 
-   * @param msg The message to be sent.
-   * @return The message being sent plus the generated hashcode delimmited by
-   *         '@@'.
-   */
 
-  public static String buildMessageChecksum(String msg) {
-    String hash = String.valueOf(msg.hashCode()); // Generate a hashcode of the message to be sent.
-
-    msg += "@@" + hash; // Append the hashcode onto the message. Delimtted by the '@@'.
-
-    return msg;
-  }
 }

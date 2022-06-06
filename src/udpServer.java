@@ -108,7 +108,7 @@ public class udpServer extends Thread {
       "-----END PGP PRIVATE KEY BLOCK-----\n";
 
   private DatagramSocket socket;
-  private boolean running, transmitError;
+  private boolean running;
   private InetAddress addressServer;
   private byte[] buf;
   private int serverPort;
@@ -118,7 +118,6 @@ public class udpServer extends Thread {
   private PGPPublicKeyRing publicKey;
 
   private static PGPSecretKeyRing certificateAuthorityPrivateKey;
-  private static PGPPublicKeyRing certificateAuthorityPublicKey;
 
   private FileWriter chatFileOut;
   private Date currentDate;
@@ -130,11 +129,10 @@ public class udpServer extends Thread {
    * 
    * @param aServer    The address of the server
    * @param port       The port of the server
-   * @param forceError Whether to force a message corruption to occur (with a
-   *                   probabilty of 10%)
+   *
    */
 
-  public udpServer(String aServer, int port, boolean forceError) { // create a new server that is bound to a partiuclar
+  public udpServer(String aServer, int port) { // create a new server that is bound to a partiuclar
                                                                    // IP address and port
     serverPort = port;
     running = true;
@@ -150,7 +148,7 @@ public class udpServer extends Thread {
       allowedUsers.add(fileIn.nextLine().trim()); // Add the allowed users to the list
     }
     fileIn.close();
-    transmitError = forceError;
+   
     try {
       addressServer = InetAddress.getByName(aServer);
       socket = new DatagramSocket(serverPort, addressServer); // create a new socket for the server.
@@ -160,9 +158,7 @@ public class udpServer extends Thread {
 
     try {
       certificateAuthorityPrivateKey = PGPainless.readKeyRing().secretKeyRing(CA_privKey);
-      // certificate is the public part of the key
-      certificateAuthorityPublicKey = PGPainless.extractCertificate(certificateAuthorityPrivateKey);
-    
+ 
     } catch (Exception e) {
       // TODO: handle exception
       System.out.print(e + "server error");
@@ -240,8 +236,25 @@ public class udpServer extends Thread {
           // TODO: handle exception
         }
 
-        if (allowedUsers.contains(username)) {
+        boolean userAlreadyInChat = false;
 
+        for (int i = 0; i < clientArrayList.size(); i++) {
+        
+          if(clientArrayList.get(i).getUsername().equals(username)){
+
+            sendMessage("The username you entered is linked to a client already logged in. Please restart client and enter valid username.", address, port);
+            userAlreadyInChat = true;
+            break;
+          }
+
+        }
+
+        if(userAlreadyInChat) continue;
+
+
+
+        if (allowedUsers.contains(username)) {
+          
           // Update new client's public key list with everyother client's public key
           manageClientBase(username, address, port); // Call the manageClientBase method to create a new client object
 
@@ -271,7 +284,7 @@ public class udpServer extends Thread {
 
           // (if the user doesn't already exist)
         } else {
-          sendMessage("You are not on the server whitelist. Please re-enter a valid username:", address, port);
+          sendMessage("You are not on the server whitelist. Please restart client and enter valid username.", address, port);
         }
 
         continue;
@@ -287,11 +300,6 @@ public class udpServer extends Thread {
         }
       }
 
-      if (received.contains("@history@")) { // Print chat history
-        sendChatHistory(currentUser);
-        continue;
-      }
-
       if (received.contains("@shutdown@")) { // i.e. if a client has told the server to shutdown.
         running = false;
         System.out.println("Server shut down by user: " + currentUser);
@@ -300,7 +308,7 @@ public class udpServer extends Thread {
       } else
         msg = "[" + currentUser + "] " + msg; // Any message sent by the client that is not '@end'. Prepend the user's
                                               // message with their username.
-      printMessageToChatLog(msg); // Print the message to the chat history file
+      
 
       broadCastMessage(msg, currentUser, terminating);
      
@@ -336,60 +344,7 @@ public class udpServer extends Thread {
     // create a new
     // clientObj and add it to the list.
   }
-
-  /**
-   * Everytime a message is sent to the server, it is printed to the chat history
-   * log file. In addition to who sent the message and the messsage itself, a
-   * current date + time stamp is preppended.
-   * 
-   * @param msg The Message to be written
-   */
-
-  private void printMessageToChatLog(String msg) {
-    currentDate = new Date(); // current date
-    try {
-      chatFileOut = new FileWriter("chat_history.txt", true);
-      chatFileOut.write("(" + FORMATTER.format(currentDate) + ") " + msg + "\n");
-      chatFileOut.close();
-    } catch (FileNotFoundException e) {
-      System.out.println("File not found error: " + e);
-    } catch (IOException e) {
-      System.out.println("I/O error: " + e);
-    }
-  }
-
-  /**
-   * This method sends the chat history to the user who requests it. The chat
-   * history is read in from the chat_history log file.
-   * 
-   * @param username The username of the client to send the chat history to
-   */
-  private void sendChatHistory(String username) {
-    String line = "";
-    int clientIndex = -1;
-    try {
-      fileIn = new Scanner(new FileReader("chat_history.txt"));
-    } catch (FileNotFoundException e) {
-      System.out.println("File not found error: " + e);
-    }
-
-    for (int i = 0; i < clientArrayList.size(); i++) {
-      if (clientArrayList.get(i).getUsername().equals(username)) {
-        clientIndex = i;
-        break;
-      }
-    }
-
-    while (fileIn.hasNextLine()) {
-      line = fileIn.nextLine();
-      sendMessage(line, clientArrayList.get(clientIndex).getInetAddress(), clientArrayList.get(clientIndex).getPort());
-    }
-
-    sendMessage("History finished", clientArrayList.get(clientIndex).getInetAddress(),
-        clientArrayList.get(clientIndex).getPort());
-    fileIn.close();
-  }
-
+ 
   /**
    * This is a basic function to send a message on the DatagramSocket. This is
    * done through the DatagramSocket.send() method.

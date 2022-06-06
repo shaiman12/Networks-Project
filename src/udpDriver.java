@@ -25,22 +25,15 @@ public class udpDriver {
  
     udpServer server;
 
-    try {
-      PGPSecretKeyRing secretKeys = PGPainless.generateKeyRing()
-      .modernKeyRing("Romeo <romeo@montague.lit>", "I defy you, stars!");
-  
-    } catch (Exception e) {
-      System.out.println(e);
-    }
    
     switch (args[0].charAt(0)) { //First character of cmd line input/
       case 's': // 's' For server
         switch (args[0]) { //What type of client? i.e. locally connected or connected over WAN
           case "sWan":
-            server = new udpServer("192.168.0.111", 1234, Boolean.parseBoolean(args[1])); //for wan connection
+            server = new udpServer("192.168.0.111", 1234); //for wan connection
             break;
           default:
-            server = new udpServer("localhost", 1234, Boolean.parseBoolean(args[1])); //For local connection
+            server = new udpServer("localhost", 1234); //For local connection
             break;
         }
         server.run(); //start server up
@@ -55,10 +48,10 @@ public class udpDriver {
 
         switch (args[0]) { //What type of client? i.e. locally connected or connected over WAN
           case "cWan":
-            cUdp = new udpClient("192.168.100.112", 1234); //create new udpClient over specifc wan connection.
+            cUdp = new udpClient("192.168.100.112", 1234, Boolean.parseBoolean(args[1])); //create new udpClient over specifc wan connection.
             break;
           default:
-            cUdp = new udpClient("localhost", 1234); //create new udpClient over generic local host connection.
+            cUdp = new udpClient("localhost", 1234, Boolean.parseBoolean(args[1])); //create new udpClient over generic local host connection.
             break;
         }
 

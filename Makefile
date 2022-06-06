@@ -20,24 +20,24 @@ default: $(CLASS_FILES)
 clean:
 	rm $(BINDIR)/*.class
 	@if [ -d $(DOCDIR) ]; then rm -r $(DOCDIR); fi;
-
-runServerWAN_error:
-	@java -cp $(CLASSPATH) udpDriver "sWan" "true"
 	
-runServerWAN_noerror:
+runServerWAN:
 	@java -cp $(CLASSPATH) udpDriver "sWan" "false"
-	
-runServerLOCAL_error:
-	@java -cp $(CLASSPATH) udpDriver "sLocal" "true"
-	
-runServerLOCAL_noerror:
+		
+runServerLOCAL:
 	@java -cp $(CLASSPATH) udpDriver "sLocal" "false"
 	
 runClientWAN:
-	@java -cp $(CLASSPATH)udpDriver "cWan"
+	@java -cp $(CLASSPATH)udpDriver "cWan" "false"
+
+runClientWAN_debug:
+	@java -cp $(CLASSPATH)udpDriver "cWan" "true"
 
 runClientLOCAL:
-	@java -cp $(CLASSPATH) udpDriver "cLocal"
+	@java -cp $(CLASSPATH) udpDriver "cLocal" "false"
+
+runClientLOCAL_debug:
+	@java -cp $(CLASSPATH) udpDriver "cLocal" "true"
 	
 runJavaDoc:
 	@javadoc -d $(DOCDIR) -linksource $(SOURCELIST)
