@@ -1,57 +1,68 @@
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.util.Scanner;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import java.util.Hashtable;
+import java.util.Scanner;
+
 import org.bouncycastle.openpgp.PGPException;
 import org.bouncycastle.openpgp.PGPPublicKeyRing;
 import org.bouncycastle.openpgp.PGPSecretKeyRing;
-import org.pgpainless.key.protection.*;
 import org.bouncycastle.util.io.Streams;
 import org.pgpainless.PGPainless;
+import org.pgpainless.algorithm.DocumentSignatureType;
 import org.pgpainless.algorithm.HashAlgorithm;
 import org.pgpainless.algorithm.SymmetricKeyAlgorithm;
 import org.pgpainless.encryption_signing.EncryptionOptions;
-import org.pgpainless.encryption_signing.EncryptionResult;
 import org.pgpainless.encryption_signing.EncryptionStream;
 import org.pgpainless.encryption_signing.ProducerOptions;
 import org.pgpainless.encryption_signing.SigningOptions;
-import org.pgpainless.key.generation.type.rsa.RsaLength;
-import org.pgpainless.algorithm.DocumentSignatureType;
-import org.pgpainless.key.info.KeyRingInfo;
-import org.pgpainless.util.Passphrase;
-import java.nio.charset.Charset;
-import org.bouncycastle.bcpg.ArmoredInputStream;
-import org.bouncycastle.bcpg.ArmoredOutputStream;
-import java.util.Hashtable;
-
-import java.util.*;
+import org.pgpainless.key.protection.SecretKeyRingProtector;
 
 /**
  * senderThread
  * This class implements runnable.
- * The class' primary function is to send user input (as a message)
- * to the server which in turn will distribute these messages to relevant
- * receiver threads.
+ * The class is responsible for sending user input to the server. 
+ * Depending on what is required, messages can also be encrypted. 
  * A sender thread is run when a udpClient object is created in a 1:1
  * relationship.
  * Within this class is where user input is requested and processed.
- * To check the integrity of the message being sent, the message’s corresponding
- * hash code is calculated
- * and is appended onto the original message delimited by “@@”.
- * Integrity is then checked when the message arrives at the server.
+ * To verify the message came from this trusted client, messages are verified
+ * by signing the message with the client's private key. Message integrity can also then
+ * be checked on the receiving side as the hash of the message is generated and signed. The receiver
+ * will check that the signed message digest matches their own hashing of the decrypted message.
  * 
- * @author FSHJAR002 RSNJOS005
- * @since 2021-03-31
+ * @author FSHJAR002 RSNJOS005 ARNSHA011 SNDJEM002
+ * @since 2022-05-11
  */
 
 public class senderThread implements Runnable {
+
+
+  private static final String caPubKey = "-----BEGIN PGP PUBLIC KEY BLOCK-----\n" +
+  "Version: PGPainless\n" +
+  "Comment: 12E3 4F04 C66D 2B70 D16C  960D ACF2 16F0 F93D DD20\n" +
+  "Comment: alice@pgpainless.org\n" +
+  "\n" +
+  "mDMEYksu1hYJKwYBBAHaRw8BAQdAIhUpRrs6zFTBI1pK40jCkzY/DQ/t4fUgNtlS\n" +
+  "mXOt1cK0FGFsaWNlQHBncGFpbmxlc3Mub3JniI8EExYKAEEFAmJLLtYJEKzyFvD5\n" +
+  "Pd0gFiEEEuNPBMZtK3DRbJYNrPIW8Pk93SACngECmwEFFgIDAQAECwkIBwUVCgkI\n" +
+  "CwKZAQAA45MBAN9SxFBICzR382bhgiur6BTuA51Mm5/fd/+7+7WcYzV8AP9Fjsje\n" +
+  "BChnSVZu9dWREAsK71xQl28vuSlbWhi1iDbVC7g4BGJLLtYSCisGAQQBl1UBBQEB\n" +
+  "B0DrQXziToxj9TIEJl7j9Y/wkPD8R+7n8bKTyFx3cfMcWwMBCAeIdQQYFgoAHQUC\n" +
+  "Yksu1gKeAQKbDAUWAgMBAAQLCQgHBRUKCQgLAAoJEKzyFvD5Pd0gnegA/2Nyxdkb\n" +
+  "4GxGjgbQLx+sNGQT6Kwd65OncfgHtBr1uBPMAPkB5oDaNKXZA8U5dATdSguwVdYk\n" +
+  "RanvVaO31tiy34ZRBLgzBGJLLtYWCSsGAQQB2kcPAQEHQD7amqdtf85lc8Th5Pvv\n" +
+  "PdfxGUjYpMFpKvbdKZmI4bSfiNUEGBYKAH0FAmJLLtYCngECmwIFFgIDAQAECwkI\n" +
+  "BwUVCgkIC18gBBkWCgAGBQJiSy7WAAoJEOEz2Vo79YylzN0A/iZAVklSJsfQslsh\n" +
+  "R6/zMBufwCK1S05jg/5Ydaksv3QcAQC4gsxdFFne+H4Mmos4atad6hMhlqr0/Zyc\n" +
+  "71ZdO5I/CAAKCRCs8hbw+T3dIGhqAQCIdVtCus336cDeNug+E9v1PEM3F/dt6GAq\n" +
+  "SG8LJqdAGgEA8cUXdUBooOo/QBkDnpteke8Z3IhIGyGedc8OwJyVFwc=\n" +
+  "=GUhm\n" +
+  "-----END PGP PUBLIC KEY BLOCK-----\n";
 
   private static DatagramSocket dSock;
   private static InetAddress serverAddress;
@@ -60,11 +71,11 @@ public class senderThread implements Runnable {
   private static SecretKeyRingProtector protectorKey = null;
   private static PGPPublicKeyRing publicKey = null;
   private static String uname;
-  private static Boolean debugOn;
 
   public static boolean isConnected;
 
   public static Hashtable<String, PGPPublicKeyRing> clientToPubKeyHashTable;
+  private static PGPPublicKeyRing certificateAuthorityPublicKey;
 
   /**
    * This is the constructor for the senderThread
@@ -72,17 +83,14 @@ public class senderThread implements Runnable {
    * @param ds       UDP Socket object. Same as the one created in the udpClient
    *                 object.
    * @param sAddress Server address to send data to.
-   * @param p        Server's port number to sen secretKey =
-   *                 PGPainless.generateKeyRing().simpleRsaKeyRing(uname,
-   *                 RsaLength._4096); //secret key
-   *                 protectorKey = SecretKeyRingProtector.unprotectedKeys();
-   *                 publicKey = PGPainless.extractCertificate(secretKey); d data
-   *                 to.
+   * @param p        Server's port number
+   * @param sK       The client's private key
+   * @param sP       The client's private key ring protector
    */
   public senderThread(DatagramSocket ds, InetAddress sAddress, int p, PGPSecretKeyRing sK, SecretKeyRingProtector sP,
-      PGPPublicKeyRing pK, String u, boolean debug) { // Create a new sender thread that is bound to the relevant
-                                                      // Datagram socket.
-    // As well as the server details to which messages must be directed.
+      PGPPublicKeyRing pK, String u) { 
+
+
     dSock = ds;
     serverAddress = sAddress;
     port = p;
@@ -95,7 +103,14 @@ public class senderThread implements Runnable {
     protectorKey = sP;
     publicKey = pK;
 
-    debugOn = debug;
+    
+    try {
+      certificateAuthorityPublicKey = PGPainless.readKeyRing().publicKeyRing(caPubKey);
+    } catch (Exception e) {
+      
+      System.out.println(e);
+    }
+
   }
 
   /**
@@ -111,17 +126,15 @@ public class senderThread implements Runnable {
 
     String msg = uname;
 
-    sendMessage("connect-User@" + msg + "#" + armourPublicKey(publicKey));
-    // System.out.println("Username is: " + msg);
-
+    sendMessage("connect-User@" + msg + "#" + encryptPublicKey(publicKey));
+  
     while (true) {
-      // block input until at least 2 clients on
-
+     
       msg = (input.nextLine()).trim();
 
-      // Get the message to be sent from user input.
+    
 
-      if (isConnected) { // If Stringthe user has been allowed into the server.
+      if (isConnected) { // If the user has been allowed into the server.
 
         try {
           if (msg.equals("@exit@") || msg.equals("@shutdown@"))
@@ -132,31 +145,47 @@ public class senderThread implements Runnable {
             sendEncryptedMessage(msg);
 
         } catch (Exception e) {
-          // TODO: handle exception
+          System.out.println(e);
         }
       }
       if (msg.contains("@exit@"))
         System.exit(0); // If the user requests to shut their client down then the application is
                         // closed.
-      // System.out.println("DONE printing keys");
-      // new Thread(new realiableThread(dSock)).start();
+  
     }
+
+   
 
   }
 
-  private static void sendEncryptedMessage(String msg) throws PGPException, IOException {
+  
+  /**
+   * sendEncryptedMessage takes in a plaintext message and encrypts the message with an AES_256 symmetric key.
+   * This symmetric key is then encrypted with all the currently logged in clients' public keys
+   * This method also signs the message with the sender's private key. The signature is in-line
+   * and it signs the message digest of the plaintext. The hashing algorithm to produce the message digest
+   * is SHA_256.
+   * Once the plaintext has been converted into ciphertext,
+   * it is then passed to the generic sendMessage function for forwarding to the server.
+   * 
+   * @param msg The message to encrypt and sign 
+   * @throws PGPException, IOException
+   */
+
+  protected void sendEncryptedMessage(String msg) throws PGPException, IOException {
     ByteArrayOutputStream ciphertext = new ByteArrayOutputStream();
     // Encrypt and sign
     EncryptionStream encryptor = PGPainless.encryptAndOrSign()
         .onOutputStream(ciphertext)
         .withOptions(ProducerOptions.signAndEncrypt(
-            // we want to encrypt communication (affects key selection based on key flags)
+            
+
             EncryptionOptions.encryptCommunications()
                 .addRecipients(clientToPubKeyHashTable.values())
                 .overrideEncryptionAlgorithm(SymmetricKeyAlgorithm.AES_256),
             new SigningOptions()
                 .addInlineSignature(protectorKey, secretKey, DocumentSignatureType.CANONICAL_TEXT_DOCUMENT)
-              //  .addDetachedSignature(protectorKey, secretKey, DocumentSignatureType.CANONICAL_TEXT_DOCUMENT)
+              
                 .overrideHashAlgorithm(
                     HashAlgorithm.SHA256))
 
@@ -173,22 +202,19 @@ public class senderThread implements Runnable {
   }
 
   /**
-   * Sendmessage function is where the actual sending of the data occurs.
+   * Sendmessage function is where the messages to be sent are actually passed to the server.
    * This is done through first making a packet which contains the data and the
-   * destination address.
+   * destination address and port.
    * Then the data is sent with the DatagramSocket.send() function.
-   * The message being sent has a hashcode appended onto it for checking integrity
-   * at the receiving end.
    * 
    * @param msg The message to be sent.
    */
 
-  public static void sendMessage(String msg) { // This is a simple sendmessage method to send to server.
+  protected void sendMessage(String msg) {
 
     byte[] buf = msg.getBytes(); // buffer built from the message.
 
-    DatagramPacket packet = new DatagramPacket( // Create a packet of The buffer, buffer length as well as the IP and
-                                                // port of the server.
+    DatagramPacket packet = new DatagramPacket(
         buf,
         buf.length,
         serverAddress,
@@ -201,7 +227,16 @@ public class senderThread implements Runnable {
     }
   }
 
-  public static String armourPublicKey(PGPPublicKeyRing keys) {
+  /**
+   * encryptPublicKey takes in the client's public key and encrypts it with the CA's public key.
+   * This is done so that when the client sends its public key over to the CA for signing, a 
+   * malicious third party would not be able to intercept this and modify the public key in transit.
+   * 
+   * @param pubKey The client's public key, unencrypted
+   * @return The encrypted public key
+   */
+
+  protected String encryptPublicKey(PGPPublicKeyRing pubKey) {
 
     String msgTemp = "";
     try {
@@ -211,10 +246,12 @@ public class senderThread implements Runnable {
           .onOutputStream(ciphertext)
           .withOptions(ProducerOptions
               .encrypt(EncryptionOptions.encryptCommunications()
-                  .addPassphrase(Passphrase.fromPassword("p4ssphr4s3")))
+                  .addRecipient(certificateAuthorityPublicKey))   //recipient is the CA
               .setAsciiArmor(true));
 
-      Streams.pipeAll(new ByteArrayInputStream((PGPainless.asciiArmor(keys)).getBytes(StandardCharsets.UTF_8)),
+
+      //pipe message into encryption stream
+      Streams.pipeAll(new ByteArrayInputStream((PGPainless.asciiArmor(pubKey)).getBytes(StandardCharsets.UTF_8)),
           encryptor);
       encryptor.close();
 

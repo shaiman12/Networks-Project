@@ -1,5 +1,4 @@
 import java.net.InetAddress;
-import org.bouncycastle.openpgp.PGPPublicKeyRing;
 
 /**
  * This is a simple class used to create a light-weight data storage class for
@@ -7,40 +6,38 @@ import org.bouncycastle.openpgp.PGPPublicKeyRing;
  * connected to the server. It is created when a udpClient successfully connects
  * to the udpServer thread and it has several functions that we can use to
  * interact with clients through the server. These are mainly accessor methods
- * such as “getUsername()” which are pivotal in controlling the broadcasting of
+ * such as “getUsername()” or "getCertificate()" which are pivotal in controlling the broadcasting of
  * messages to the appropriate clients.
  * 
- * @author FSHJAR002 RSNJOS005
- * @since 2021-04-02
+ * @author FSHJAR002 RSNJOS005 ARNSHA011 SNDJEM002
+ * @since 2022-05-10
  */
 
-public class clientObj { // Basic client object. Used exclusively by the udpServer for data storage and
-                         // ease-of-use.
+public class clientObj { 
 
-  // Defines simple getter methods.
 
   private String userName;
   private InetAddress address;
   private int port;
-  private PGPPublicKeyRing publicKey = null;
   private String certificate = null; 
 
   /**
-   * Construction of this object requires a username, an IP address and a port
-   * number.
+   * Construction of this object requires the client's username, IP address,
+   * certificate and port number.
    * 
-   * @param u The username of the client
-   * @param a The IP address of the client
-   * @param p The port number of the client
+   * @param u The client's username
+   * @param a The client's IP address
+   * @param p The client's port number
+   * @param cert The client's certificate
    */
 
-  public clientObj(String u, InetAddress a, int p, PGPPublicKeyRing pk, String c) { // Client is created with their particular username, IP address and
+  public clientObj(String u, InetAddress a, int p,  String cert) { // Client is created with their particular username, IP address and
                                                      // port.
     userName = u;
     address = a;
     port = p;
-    publicKey = pk;
-    certificate = c;
+   
+    certificate = cert;
   }
 
   /**
@@ -52,10 +49,11 @@ public class clientObj { // Basic client object. Used exclusively by the udpServ
     return userName;
   }
 
-  public PGPPublicKeyRing getClientPubKey(){
-    return publicKey;
-  }
-
+    /**
+   * Accesor method for returning the client's certificate
+   * 
+   * @return The client's certificate
+   */
   public String getCertificate(){
     return certificate;
   }

@@ -1,39 +1,21 @@
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.util.Scanner;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.NoSuchAlgorithmException;
+
 import org.bouncycastle.openpgp.PGPException;
 import org.bouncycastle.openpgp.PGPPublicKeyRing;
 import org.bouncycastle.openpgp.PGPSecretKeyRing;
 import org.bouncycastle.openpgp.PGPSignature;
-import org.pgpainless.key.protection.*;
 import org.bouncycastle.util.io.Streams;
 import org.pgpainless.PGPainless;
-import org.pgpainless.algorithm.HashAlgorithm;
-import org.pgpainless.algorithm.SymmetricKeyAlgorithm;
-import org.pgpainless.encryption_signing.EncryptionOptions;
-import org.pgpainless.encryption_signing.EncryptionStream;
-import org.pgpainless.encryption_signing.ProducerOptions;
-import org.pgpainless.encryption_signing.SigningOptions;
-import org.pgpainless.key.generation.type.rsa.RsaLength;
-import org.pgpainless.algorithm.DocumentSignatureType;
-import org.pgpainless.key.info.KeyRingInfo;
-import org.pgpainless.decryption_verification.ConsumerOptions;
-import org.pgpainless.decryption_verification.DecryptionStream;
-
-import org.pgpainless.algorithm.DocumentSignatureType;
 import org.pgpainless.decryption_verification.ConsumerOptions;
 import org.pgpainless.decryption_verification.DecryptionStream;
 import org.pgpainless.decryption_verification.OpenPgpMetadata;
-import org.pgpainless.encryption_signing.EncryptionStream;
-import org.pgpainless.encryption_signing.ProducerOptions;
-import org.pgpainless.encryption_signing.SigningOptions;
+import org.pgpainless.key.info.KeyRingInfo;
+import org.pgpainless.key.protection.SecretKeyRingProtector;
 import org.pgpainless.util.ArmorUtils;
 
 /**
@@ -41,15 +23,10 @@ import org.pgpainless.util.ArmorUtils;
  * is to receive messages distributed by the server and print them to screen.
  * All subsequent functionality halts (within the class) while waiting to
  * receive a message and continues after it has. A receiver thread is run when a
- * udpClient object is created in a 1:1 relationship. The receiverThread class
- * also checks if a message was corrupted between the server and the receiver.
- * It does this by calculating a hash code of the message, then comparing it to
- * the original hash code sent along with the message (see buildChecksum in
- * senderThread). If these hash codes match, then the message arrived
- * uncorrupted.
+ * udpClient object is created in a 1:1 relationship. 
  * 
- * @author FSHJAR002 RSNJOS005
- * @since 2021-03-31
+ * @author FSHJAR002 RSNJOS005 ARNSHA011 SNDJEM002
+ * @since 2022-05-11
  */
 
 public class receiverThread implements Runnable {
@@ -86,24 +63,16 @@ public class receiverThread implements Runnable {
 
   /**
    * Constructor for receiverThread. Sets the DatagramSocket without specifying a
-   * particular IP address and port.
+   * particular IP address and port. Also initiliases the CA's public key
    * 
    * @param ds UDP Socket object. Same as the one created in the udpClient object.
+   * @param sK The client's private key
+   * @param sP The client's private key ring protector
+   * @param debug Whether or not the user has requested the debug mode to be on.
    */
 
-  public receiverThread(DatagramSocket ds, PGPSecretKeyRing sK, SecretKeyRingProtector sP, boolean debug) { // Create
-                                                                                                            // a
-                                                                                                            // new
-                                                                                                            // receiver
-                                                                                                            // thread
-                                                                                                            // bound
-                                                                                                            // to
-                                                                                                            // the
-                                                                                                            // relevant
-                                                                                                            // Datagram
-                                                                                                            // Socket
-                                                                                                            // -
-    // this comes from the associated client.
+  public receiverThread(DatagramSocket ds, PGPSecretKeyRing sK, SecretKeyRingProtector sP, boolean debug) {
+    
     dSock = ds;
     secretKey = sK;
     protectorKey = sP;
@@ -113,8 +82,8 @@ public class receiverThread implements Runnable {
     try {
       certificateAuthorityPublicKey = PGPainless.readKeyRing().publicKeyRing(caPubKey);
     } catch (Exception e) {
-      // TODO: handle exception
-      System.out.println("biiiiigg ERROR");
+      
+      System.out.println(e);
     }
   }
 
@@ -137,21 +106,20 @@ public class receiverThread implements Runnable {
       }
 
       String str = new String(dpRecv.getData(), 0, dpRecv.getLength()).trim(); // Get the message sent with the packet.
-      // This currently includes the appended hashcode.
-
-      int y = 0;
-      // int iHash = 0; //changed
-      String msg = str;
-      String errorMsg = "Message corrupted here at receiver side. Please resend Message.";
-
+   
+ 
+      //When the server needs to update all connected client's certificate storage,
+      //The server will send a message that contains the "KEYUPDATE@" control message.
+      //This is triggered when a new client logs on. The message contains the new client's certificate.
+      
       if (str.contains("KEYUPDATE@")) {
-        // addd all public keys to public key data structure
+        
         try {
           int x = str.indexOf("@");
-          // Hash username to key
-          msg = msg.substring(x + 1, msg.length()).trim();
+         
+          str = str.substring(x + 1, str.length()).trim();
 
-          ByteArrayInputStream signedIn = new ByteArrayInputStream(msg.getBytes(StandardCharsets.UTF_8));
+          ByteArrayInputStream signedIn = new ByteArrayInputStream(str.getBytes(StandardCharsets.UTF_8));
 
           // and pass it to the decryption stream
           DecryptionStream verificationStream = PGPainless.decryptAndOrVerify()
@@ -163,40 +131,55 @@ public class receiverThread implements Runnable {
           ByteArrayOutputStream plain = new ByteArrayOutputStream();
           Streams.pipeAll(verificationStream, plain);
 
-          verificationStream.close(); // as always, remember to close the stream
+          verificationStream.close();
 
           OpenPgpMetadata metadata = verificationStream.getResult();
 
+          //We check to see that the new certificate for some client is indeed a certificate
+          //created by the trusted CA.
+          //This is achieved by checking that the message contains a verified signature from the trusted CA.
+          
+
           if (metadata.containsVerifiedSignatureFrom(certificateAuthorityPublicKey)) {
 
-            int posBegin = msg.indexOf("-----BEGIN PGP PUBLIC KEY BLOCK-----");
-            int posEnd = msg.indexOf("-----END PGP PUBLIC KEY BLOCK-----");
+            //Following code is string handling of the message to access the public key stored in the
+            //certificate
 
-            String pubKeyString = msg.substring(posBegin, posEnd - 2) + "-----END PGP PUBLIC KEY BLOCK-----";
+            int posBegin = str.indexOf("-----BEGIN PGP PUBLIC KEY BLOCK-----");
+            int posEnd = str.indexOf("-----END PGP PUBLIC KEY BLOCK-----");
 
+            String pubKeyString = str.substring(posBegin, posEnd - 2) + "-----END PGP PUBLIC KEY BLOCK-----";
+
+            //Extract public key
             PGPPublicKeyRing newClientPubKey = PGPainless.readKeyRing().publicKeyRing(pubKeyString);
             KeyRingInfo keyInfo = new KeyRingInfo(newClientPubKey);
+            
+            //Extract username from the key information
             String uName = keyInfo.getPrimaryUserId();
+
+            //Add the Username <-> Certificate pairing to the HashTable used by the senderThread
 
             senderThread.clientToPubKeyHashTable.put(uName, newClientPubKey);
 
           }
 
-          else
-            System.out.println("error, certificate not signed by trusted CA");
+          else 
+           //If message does not contain a verified signature from the trusted CA, alert the user.
+
+            System.out.println("Error, certificate not signed by trusted CA. Untrustworthy");
 
         } catch (Exception e) {
-          // TODO: handle exception
+          
           System.out.println(e);
         }
         continue;
       }
 
-      if (str.contains("connected@")) {
+      if (str.contains("connected@")) {   //Server notifying client that it has successfully logged in
         senderThread.isConnected = true;
         int x = str.indexOf("@");
 
-        String username = str.substring(x + 1, str.length()); // changed
+        String username = str.substring(x + 1, str.length());
         printWelcomeInformation(username);
         continue;
       }
@@ -207,28 +190,39 @@ public class receiverThread implements Runnable {
         System.exit(0);
       }
 
-      if (str.contains(") has entered the chat")) {
+      if (str.contains(") has entered the chat")) {     //Message letting client know of new client
         System.out.println(str);
         continue;
       }
 
-      if (str.contains("Current users in chat:")) {
+      if (str.contains("Current users in chat:")) {     //Message letting client know of which clients are in the chat room
         System.out.println(str);
         continue;
       }
 
-      if (str.contains(
-          "The username you entered is linked to a client already logged in. Please restart client and enter valid username.")) {
+
+
+      //If user trys to login with username linked to another client already in the chat room,
+      //The user will be kicked out and asked to try again
+
+      if (str.contains("The username you entered is linked to a client already logged in. Please restart client and enter valid username.")) {
         System.out.println(str);
         System.exit(0);
 
       }
+
+
+      //If user trys to login with username not on the server whitelist,
+      //The user will be kicked out and asked to try again
 
       if (str.contains("You are not on the server whitelist. Please restart client and enter valid username.")) {
         System.out.println(str);
         System.exit(0);
 
       }
+
+
+      //Message letting client know of client has just exited the chat room
 
       if (str.contains("] has disconnected.")) {
         System.out.println(str);
@@ -238,27 +232,48 @@ public class receiverThread implements Runnable {
       // we decrypt here
       else {
 
-        int pos = msg.indexOf("]");
-        String uName = msg.substring(1, pos);
+        int pos = str.indexOf("]");
+        String uName = str.substring(1, pos);
 
-        String encryptedString = (msg.substring(pos + 1, msg.length())).trim();
+        String encryptedString = (str.substring(pos + 1, str.length())).trim();
 
         try {
           System.out.println("[" + uName + "] " + decryptMessage(encryptedString, uName));
         } catch (Exception e) {
-          // TODO: handle exception
+          
           System.out.println(e);
         }
       }
 
-      // Otherwise, the relevant error message is printed.
+      
     }
   }
 
-  private static String decryptMessage(String msg, String uname) throws PGPException, IOException {
+  /**
+   * Decrypt message takes in an encrypted message and decrypts the message using the receiver's
+   * private key. This method also verifies that the message was sent by the authorised sender and
+   * not a malicious third party. The appropriate certificate used for verification 
+   * is accessed from the client's HashTable of Usernames <-> Certificates.
+   * In the event that the message is received and is not successfully verified, the user will be 
+   * explicitly notified of this authentication issue. Similarly, if the message was sent unencrypted, the user will
+   * be notified that confidentiality may have been breached.
+   * 
+   * If debug mode is on, lots of metadata about the decryption stream will also be printed.
+   * 
+   * @param str The message to decrypt
+   * @param uname The username linked to the client
+   * @throws PGPException, IOException
+   * @return The decrypted Message
+   */
+
+  protected String decryptMessage(String str, String uname) throws PGPException, IOException {
+
+
+    //Create decryption stream with appropriate options, verificiate certificates
+    //and decryption keys
 
     DecryptionStream decryptor = PGPainless.decryptAndOrVerify()
-        .onInputStream(new ByteArrayInputStream(msg.getBytes(StandardCharsets.UTF_8)))
+        .onInputStream(new ByteArrayInputStream(str.getBytes(StandardCharsets.UTF_8)))
         .withOptions(new ConsumerOptions()
             .addDecryptionKey(secretKey, protectorKey)
             
@@ -276,8 +291,12 @@ public class receiverThread implements Runnable {
       System.out.println("Session key Algorithm: " + metadata.getSymmetricKeyAlgorithm().toString());
       System.out.println("Compression Algorithm: " + metadata.getCompressionAlgorithm().toString());
 
+      //Check that the message contains a verified signed by the real, trusted sender.
+
       System.out.println("Contains verified signature from " + uname
           + " : " + metadata.containsVerifiedSignatureFrom(senderThread.clientToPubKeyHashTable.get(uname)));
+
+      //Print out the signatures from the message (contains the hash of the message)
 
       for (PGPSignature cig : metadata.getSignatures()) {
         System.out.println(ArmorUtils.toAsciiArmoredString(cig.getEncoded()));
@@ -285,8 +304,11 @@ public class receiverThread implements Runnable {
       }
     }
  
+    //If the message was not signed by the real, trusted sender.
     if (!(metadata.containsVerifiedSignatureFrom(senderThread.clientToPubKeyHashTable.get(uname))))
       System.out.println("WARNING: Message verification failed. Message was not signed by " + uname);
+
+    //If the message was sent unencrypted
 
     if (!(metadata.isEncrypted()))
       System.out.println("WARNING: Message was not encrypted in transit. Confidentiality lost");
@@ -295,22 +317,24 @@ public class receiverThread implements Runnable {
   }
 
   /**
-   * This method prints welcoming messages and information to the client. It is
-   * primarily
-   * for aesthetic purposes.
+   * This method prints welcome information for the client.
+   * It also displays the useful commands available to the user.
    * 
    * @param uname The username linked to the client
    */
 
-  private void printWelcomeInformation(String uname) {
+  protected void printWelcomeInformation(String uname) {
     System.out.println("\n");
-    System.out.println("Welcome to the server, " + uname);
+    System.out.println("Welcome to the PGP encrypted NIS chat room, " + uname);
     System.out.println();
-    System.out.println("The following commands are available to you:");
+    System.out.println("All messages sent between you and other recipients are fully encrypted");
+    System.out.println("Messages are also verified by a trusted certificate authority to ensure authenticity");
+    System.out.println();
+    System.out.println("In addition to sending plain messages, the following commands are available:");
     System.out.println("@shutdown@ \t" + "Shuts the server down.");
-    System.out.println("@exit@ \t \t" + "Closes your client down.");
-    System.out.println("@history@ \t" + "Prints the chat history stored on the server.");
-    System.out.println();
+    System.out.println("@exit@ \t \t" + "Exits your client.");
+    System.out.println("To use these commands, just type them into your console as indicated.");
+      System.out.println();
     System.out.print("Connecting ");
     try {
       Thread.sleep(1000);
@@ -333,13 +357,9 @@ public class receiverThread implements Runnable {
       System.out.println(e);
     }
     System.out.print(".");
-    System.out.print("\t Connected");
+    System.out.print("\t Successfully connected.");
     System.out.println();
-    System.out.println("You may begin by typing below:");
-  }
-
-  protected static void setPrivKey(PGPSecretKeyRing pS) {
-    secretKey = pS;
+    System.out.println("You may start typing in the chat now:");
   }
 
 }

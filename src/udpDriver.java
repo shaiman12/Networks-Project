@@ -1,7 +1,4 @@
-import java.util.Scanner;
 
-import org.pgpainless.*;
-import org.bouncycastle.openpgp.*;
 /**
  *udpDriver
  *This class is where the main function is called. It has multiple invoking parameters that enable specific startup features.
@@ -9,13 +6,14 @@ import org.bouncycastle.openpgp.*;
  *a WAN startup which sets up the server on an external IP address, enabling cross network communication,
  *and a client startup which simply enables a user to interact with the server.
  *The server startup sequence creates a udpServer object and the client startup sequence creates a udpClient object.
- *@author FSHJAR002 RSNJOS005
- *@since 2021-03-29
+ *@author FSHJAR002 RSNJOS005 ARNSHA011 SNDJEM002
+ *@since 2022-05-10
  */
 
 public class udpDriver {
 
-  static udpClient cUdp;
+  private static udpClient cUdp;
+  private static udpServer server;
  
   /**
    *Main function
@@ -23,12 +21,13 @@ public class udpDriver {
    */
   public static void main(String[] args) {
  
-    udpServer server;
+   
 
    
-    switch (args[0].charAt(0)) { //First character of cmd line input/
+    switch (args[0].charAt(0)) { 
+
       case 's': // 's' For server
-        switch (args[0]) { //What type of client? i.e. locally connected or connected over WAN
+        switch (args[0]) { 
           case "sWan":
             server = new udpServer("192.168.0.111", 1234); //for wan connection
             break;
@@ -37,16 +36,15 @@ public class udpDriver {
             break;
         }
         server.run(); //start server up
-        /*Starts a single udpServer thread. The
-        reason we opted to implement it this way was to ensure concurrent
-        functionality with udpClient objects and to be sparing with resources. */
+       
         break;
+
+
       case 'c': // 'c' For client
         
 
-        System.out.println("Please enter your username below:");
-
-        switch (args[0]) { //What type of client? i.e. locally connected or connected over WAN
+       
+        switch (args[0]) {
           case "cWan":
             cUdp = new udpClient("192.168.100.112", 1234, Boolean.parseBoolean(args[1])); //create new udpClient over specifc wan connection.
             break;

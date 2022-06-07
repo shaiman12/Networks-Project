@@ -40,4 +40,4 @@ runClientLOCAL_debug:
 	@java -cp $(CLASSPATH) udpDriver "cLocal" "true"
 	
 runJavaDoc:
-	@javadoc -d $(DOCDIR) -linksource $(SOURCELIST)
+	@javadoc -cp $(CLASSPATH) -d $(DOCDIR) -linksource $(SOURCELIST)
